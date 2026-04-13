@@ -247,7 +247,10 @@ const pvo=document.getElementById('pvo');if(pvo)pvo.onclick=(ev)=>{if(ev.target=
 const pvc=document.getElementById('pvc');if(pvc)pvc.onclick=()=>{S.prev=null;R();};
 document.querySelectorAll('[data-rf]').forEach(b=>b.onclick=()=>{const[p,f]=b.dataset.rf.split(':');rF(p,f);R();});
 document.querySelectorAll('[data-rpf]').forEach(b=>b.onclick=()=>{S.pf.splice(+b.dataset.rpf,1);R();});
-document.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>{S.ft=b.dataset.ff;document.getElementById('gfi').click();});
+document.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>{
+S.ft=b.dataset.ff;
+saveModalState();
+document.getElementById('gfi').click();});
 document.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const d=pD(S.selDate);d.setDate(d.getDate()+parseInt(b.dataset.dn));S.selDate=fD(d);R();});
 document.querySelectorAll('[data-vt]').forEach(b=>b.onclick=()=>{S.tv=b.dataset.vt;R();});
 document.querySelectorAll('[data-wd]').forEach(b=>b.onclick=()=>{S.selDate=b.dataset.wd;S.tv='day';R();});
@@ -318,9 +321,18 @@ const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{cons
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
 const MAX=2*1024*1024;
+// 렌더링 전에 현재 모달 폼 값 저장
+saveModalState();
 files.forEach(file=>{
 if(file.size>MAX){alert(`"${file.name}" 파일이 너무 커요 (${(file.size/1024/1024).toFixed(1)}MB).\nLocalStorage 한계로 2MB 이하 파일만 저장 가능해요.`);ld2++;if(ld2===files.length)R();return;}
 const r=new FileReader();r.onload=function(v){S.pf.push({id:uid(),name:file.name,type:file.type,data:v.target.result});ld2++;if(ld2===files.length)R();};r.readAsDataURL(file);});ev.target.value='';};
+
+function saveModalState(){
+if(S.sjf){const jc=document.getElementById('jc'),jp=document.getElementById('jp'),jdl=document.getElementById('jdl'),jad=document.getElementById('jad'),jex=document.getElementById('jex'),jrd=document.getElementById('jrd'),jid2=document.getElementById('jid'),jst=document.getElementById('jst'),jnn=document.getElementById('jnn');
+if(jc)S.jf={company:jc.value,position:jp.value,deadline:jdl.value,applyDate:jad.value,examDate:jex?jex.value:'',resultDate:jrd.value,interviewDate:jid2.value,status:jst.value,notes:jnn.value};}
+if(S.sif){const iit=document.getElementById('iit'),iic=document.getElementById('iic'),iico=document.getElementById('iico'),iiu=document.getElementById('iiu'),iig=document.getElementById('iig');
+if(iit)S.inf={title:iit.value,category:iic.value,content:iico.value,url:iiu.value,tags:iig.value};}
+}
 function aTd(){if(!S.tIn.trim()&&!S.pf.length)return;const id=uid();S.todos.push({id,text:S.tIn.trim()||'(첨부파일)',done:false,date:S.selDate,priority:false});if(S.pf.length){S.files[id]=S.pf.slice();S.pf=[];S.ft=null;}S.tIn='';ps();R();setTimeout(()=>{const el=document.getElementById('tii');if(el)el.focus();},50);}
 function sJb(){const f={company:document.getElementById('jc').value,position:document.getElementById('jp').value,deadline:document.getElementById('jdl').value,applyDate:document.getElementById('jad').value,examDate:document.getElementById('jex').value,resultDate:document.getElementById('jrd').value,interviewDate:document.getElementById('jid').value,status:document.getElementById('jst').value,notes:document.getElementById('jnn').value};if(!f.company.trim())return;let id;if(S.ejid){S.jobs=S.jobs.map(j=>j.id===S.ejid?{...f,id:S.ejid}:j);id=S.ejid;}else{id=uid();S.jobs.push({...f,id});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sjf=false;S.ejid=null;ps();R();}
 function sIn(){const f={title:document.getElementById('iit').value,category:document.getElementById('iic').value,content:document.getElementById('iico').value,url:document.getElementById('iiu').value,tags:document.getElementById('iig').value};if(!f.title.trim())return;let id;if(S.eiid){S.infos=S.infos.map(i=>i.id===S.eiid?{...f,id:S.eiid,createdAt:i.createdAt}:i);id=S.eiid;}else{id=uid();S.infos.push({...f,id,createdAt:new Date().toISOString()});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sif=false;S.eiid=null;ps();R();}
