@@ -21,7 +21,7 @@ a{color:var(--blue);text-decoration:none;}
 .lo-btn:active{background:var(--al);}
 .bottom-tab{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);z-index:50;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .bottom-tab::-webkit-scrollbar{display:none;}
-.bottom-tab button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 14px 9px;min-width:64px;font-size:10px;font-weight:400;color:var(--sub);white-space:nowrap;}
+.bottom-tab button{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 9px;min-width:0;font-size:10px;font-weight:400;color:var(--sub);white-space:nowrap;}
 .bottom-tab button.active{color:var(--accent);font-weight:600;}
 .bottom-tab button svg{width:20px;height:20px;}
 .mw{padding-top:52px;padding-bottom:68px;}
@@ -149,13 +149,21 @@ a{color:var(--blue);text-decoration:none;}
 <div id="app"></div>
 <input type="file" id="gfi" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.hwp" style="display:none">
 <script>
-const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',f:'bw-f',pw:'bw-pw'};
+const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw'};
 function ld(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function gPw(){return localStorage.getItem(K.pw)||'1234';}
 function sPw(p){localStorage.setItem(K.pw,p);}
-let S={locked:true,pin:'',pinErr:false,tab:'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:ld(K.c,['채용정보','개발','자격증','기타']),files:ld(K.f,{}),selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null};
-function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);try{localStorage.setItem(K.f,JSON.stringify(S.files));}catch(err){alert('⚠️ 저장 용량 초과!\n첨부파일(특히 PDF)이 너무 커서 저장할 수 없어요.\n큰 파일은 삭제하거나 이미지로 변환해서 첨부해주세요.');console.warn('Storage full',err);}}
+
+// ── IndexedDB for files ──
+const DB_NAME='bw-db',DB_VER=1,DB_STORE='files';
+function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE);};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}
+async function idbSave(files){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(files,'allFiles');return new Promise((res,rej)=>{tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}catch(err){console.warn('IDB save err',err);}}
+async function idbLoad(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readonly');const req=tx.objectStore(DB_STORE).get('allFiles');return new Promise((res)=>{req.onsuccess=()=>res(req.result||{});req.onerror=()=>res({});});}catch{return {};}}
+async function idbClear(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).clear();}catch{}}
+
+let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:ld(K.c,['채용정보','개발','자격증','기타']),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false};
+function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
 function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -189,14 +197,14 @@ function rLk(){const dots=Array.from({length:4},(_,i)=>`<div class="pin-dot ${S.
 return`<div class="lock-screen"><div class="lock-icon">🔒</div><h1>Brainy Workplace</h1><p class="lock-sub">비밀번호를 입력하세요</p><div class="pin-dots">${dots}</div>
 <div class="pin-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pin-key" data-p="${n}">${n}</button>`).join('')}<button class="pin-key fn"></button><button class="pin-key" data-p="0">0</button><button class="pin-key fn" data-p="del">⌫</button></div>
 <div class="lock-error">${S.pinErr?'비밀번호가 틀렸어요':''}</div></div>`;}
-function bLk(){document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const v=b.dataset.p;if(v==='del'){S.pin=S.pin.slice(0,-1);S.pinErr=false;R();return;}if(S.pin.length>=10)return;S.pinErr=false;S.pin+=v;if(S.pin.length>=4&&S.pin===gPw()){S.locked=false;S.pin='';R();}else if(S.pin.length>=gPw().length&&S.pin!==gPw()){S.pinErr=true;R();setTimeout(()=>{S.pin='';S.pinErr=false;R();},700);}else R();});}
+function bLk(){document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const v=b.dataset.p;if(v==='del'){S.pin=S.pin.slice(0,-1);S.pinErr=false;R();return;}if(S.pin.length>=10)return;S.pinErr=false;S.pin+=v;if(S.pin.length>=4&&S.pin===gPw()){S.locked=false;S.pin='';sessionStorage.setItem('bw-auth','1');R();}else if(S.pin.length>=gPw().length&&S.pin!==gPw()){S.pinErr=true;R();setTimeout(()=>{S.pin='';S.pinErr=false;R();},700);}else R();});}
 
 function rBt(){const ts=[{id:'todo',l:'할 일',s:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'},{id:'jobs',l:'입사지원',s:'<path d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>'},{id:'info',l:'아카이브',s:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h14v14H6.5"/>'},{id:'calendar',l:'캘린더',s:'<path d="M8 2v4M16 2v4M3 10h18"/><path d="M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>'},{id:'settings',l:'설정',s:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>'}];
 return`<nav class="bottom-tab">${ts.map(t=>`<button class="${S.tab===t.id?'active':''}" data-tab="${t.id}"><svg viewBox="0 0 24 24" fill="none" stroke="${S.tab===t.id?'var(--accent)':'var(--sub)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.s}</svg>${t.l}</button>`).join('')}</nav>`;}
 
 function rCFs(p){const f=gF(p);if(!f.length)return'';return`<div class="cf">${f.map((x,i)=>{return iI(x.name)?`<div class="cft" data-pvp="${p}" data-pvi="${i}"><img src="${x.data}"></div>`:`<div class="cft" data-pvp="${p}" data-pvi="${i}">${fI(x.name)}</div>`;}).join('')}</div>`;}
-function rFL(p){const f=gF(p);if(!f.length)return'';return`<div class="fl">${f.map(x=>`<div class="fi"><div class="ft">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rf="${p}:${x.id}">×</span></div>`).join('')}</div>`;}
-function rPFs(){if(!S.pf.length)return'';return`<div class="fl">${S.pf.map((x,i)=>`<div class="fi"><div class="ft">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rpf="${i}">×</span></div>`).join('')}</div>`;}
+function rFL(p){const f=gF(p);if(!f.length)return'';return`<div class="fl">${f.map((x,i)=>`<div class="fi"><div class="ft ${iI(x.name)?'ftcl':''}" data-pvp="${p}" data-pvi="${i}" style="cursor:pointer">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rf="${p}:${x.id}">×</span></div>`).join('')}</div>`;}
+function rPFs(){if(!S.pf.length)return'';return`<div class="fl">${S.pf.map((x,i)=>`<div class="fi"><div class="ft ${iI(x.name)?'ftcl':''}" data-pfpv="${i}" style="cursor:pointer">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rpf="${i}">×</span></div>`).join('')}</div>`;}
 function rPv(){const p=S.prev;if(p.type==='image')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><img src="${p.data}"></div>`;if(p.type==='pdf')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><iframe src="${p.data}"></iframe></div>`;return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><div style="background:#fff;padding:32px;border-radius:12px;text-align:center"><div style="font-size:48px;margin-bottom:12px">${fI(p.name)}</div><div style="font-size:14px;margin-bottom:16px">${e(p.name)}</div><a href="${p.data}" download="${e(p.name)}" class="bp" style="text-decoration:none;display:inline-block">다운로드</a></div></div>`;}
 
 function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date()),dt=S.todos.filter(t=>t.date===S.selDate),so=[...dt],dc=dt.filter(t=>t.done).length,tot=dt.length,pct=tot?Math.round(dc/tot*100):0;
@@ -235,14 +243,15 @@ function rSt(){return`<div class="sh"><h2>설정</h2></div><div class="stc"><h3>
 <label class="bp" id="bkImpLabel" style="width:100%;display:block;text-align:center;margin-bottom:8px;cursor:pointer;background:var(--blue)">📂 데이터 불러오기 (복원)</label>
 <input type="file" id="bkImp" accept=".json" style="display:none">
 ${S.bkMsg?`<div class="smg ${S.bkMsg.o?'ok':'er'}">${S.bkMsg.t}</div>`:''}
-<div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">• 내보내기: JSON 파일로 다운로드됩니다<br>• 불러오기: 기존 데이터를 덮어씁니다<br>• 첨부파일 포함 시 파일 크기가 클 수 있어요</div></div>
+<div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">• 내보내기: JSON 파일로 다운로드됩니다<br>• 불러오기: 기존 데이터를 덮어씁니다<br>• 첨부파일은 IndexedDB에 저장 (용량 걱정 없음)</div></div>
 <div class="stc"><h3>📊 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4>⚠️ 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
 
 function bEv(){
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;R();});
-const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{S.locked=true;S.pin='';R();};
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);R();});
+const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{S.locked=true;S.pin='';sessionStorage.removeItem('bw-auth');R();};
 document.querySelectorAll('[data-pv]').forEach(b=>b.onclick=()=>{try{S.prev=JSON.parse(b.dataset.pv);R();}catch{}});
-document.querySelectorAll('[data-pvp]').forEach(b=>b.onclick=()=>{const files=gF(b.dataset.pvp);const f=files[parseInt(b.dataset.pvi)];if(!f)return;S.prev={type:iI(f.name)?'image':iP(f.name)?'pdf':'other',data:f.data,name:f.name};R();});
+document.querySelectorAll('[data-pvp]').forEach(b=>b.onclick=()=>{const files=gF(b.dataset.pvp);const f=files[parseInt(b.dataset.pvi)];if(!f)return;saveModalState();S.prev={type:iI(f.name)?'image':iP(f.name)?'pdf':'other',data:f.data,name:f.name};R();});
+document.querySelectorAll('[data-pfpv]').forEach(b=>b.onclick=()=>{const f=S.pf[parseInt(b.dataset.pfpv)];if(!f)return;saveModalState();S.prev={type:iI(f.name)?'image':iP(f.name)?'pdf':'other',data:f.data,name:f.name};R();});
 const pvo=document.getElementById('pvo');if(pvo)pvo.onclick=(ev)=>{if(ev.target===pvo){S.prev=null;R();}};
 const pvc=document.getElementById('pvc');if(pvc)pvc.onclick=()=>{S.prev=null;R();};
 document.querySelectorAll('[data-rf]').forEach(b=>b.onclick=()=>{const[p,f]=b.dataset.rf.split(':');rF(p,f);R();});
@@ -314,17 +323,15 @@ initDrag('jobList','data-jdrag','data-jdh',S.jobs,'jobs');
 initDrag('infoList','data-idrag','data-idh',S.infos,'infos');
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
-const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));location.reload();}};
+const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
 const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:1,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
 const bkImpLabel=document.getElementById('bkImpLabel');if(bkImpLabel)bkImpLabel.onclick=()=>{document.getElementById('bkImp').click();};
 const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=data.todos;if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
-const MAX=2*1024*1024;
 // 렌더링 전에 현재 모달 폼 값 저장
 saveModalState();
 files.forEach(file=>{
-if(file.size>MAX){alert(`"${file.name}" 파일이 너무 커요 (${(file.size/1024/1024).toFixed(1)}MB).\nLocalStorage 한계로 2MB 이하 파일만 저장 가능해요.`);ld2++;if(ld2===files.length)R();return;}
 const r=new FileReader();r.onload=function(v){S.pf.push({id:uid(),name:file.name,type:file.type,data:v.target.result});ld2++;if(ld2===files.length)R();};r.readAsDataURL(file);});ev.target.value='';};
 
 function saveModalState(){
@@ -365,7 +372,18 @@ if(curOver&&dragId&&curOver!==dragId){const fi=arr.findIndex(x=>x.id===dragId),t
 if(fi>=0&&ti2>=0){const item=arr.splice(fi,1)[0];arr.splice(ti2,0,item);ps();R();}}
 dragId=null;curOver=null;});
 });}
-R();
+
+// ── INIT: IndexedDB에서 파일 로드 후 시작 ──
+(async function(){
+  // 기존 localStorage 파일 데이터 마이그레이션
+  const oldFiles=localStorage.getItem('bw-f');
+  if(oldFiles){try{const parsed=JSON.parse(oldFiles);S.files=parsed;await idbSave(parsed);localStorage.removeItem('bw-f');}catch{}}
+  // IndexedDB에서 로드
+  const f=await idbLoad();
+  if(f&&Object.keys(f).length)S.files=f;
+  S.ready=true;
+  R();
+})();
 </script>
 </body>
 </html>
