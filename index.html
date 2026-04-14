@@ -76,29 +76,29 @@ a{color:var(--blue);text-decoration:none;}
 .wc.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
 .wc.tod:not(.sel){border:2px solid var(--accent);}
 /* Weekly Planner */
-.wp{border:1.5px solid #B8C4D0;border-radius:4px;overflow:hidden;margin-bottom:16px;background:#fff;}
+.wp{border:1.5px solid #B8C4D0;border-radius:8px;overflow:hidden;margin-bottom:16px;background:#fff;}
 .wp-title{text-align:center;font-size:13px;font-weight:700;letter-spacing:2px;padding:8px;color:var(--text);border-bottom:1.5px solid #B8C4D0;background:#F8FAFB;}
-.wp-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1.5px solid #B8C4D0;}
-.wp-row:last-child{border-bottom:none;}
-.wp-row.wpr-top{grid-template-columns:1.3fr 1fr 1fr 1fr;}
-.wp-hdr{font-size:10px;font-weight:600;text-align:center;padding:5px 4px;background:#F0F3F6;border-right:1px solid #B8C4D0;color:var(--text);}
-.wp-hdr:last-child{border-right:none;}
-.wp-cell{min-height:90px;padding:6px;border-right:1px solid #B8C4D0;position:relative;background:url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0H0v20' fill='none' stroke='%23E8ECF0' stroke-width='.5'/%3E%3C/svg%3E") repeat;}
-.wp-cell:last-child{border-right:none;}
-.wp-cell.wl{background:#fff;}
-.wp-cell .wp-date{font-size:9px;color:var(--sub);margin-bottom:4px;}
-.wp-cell .wp-date.is-today{color:var(--accent);font-weight:700;}
-.wp-dot{width:7px;height:7px;border-radius:4px;background:#B8C4D0;position:absolute;top:6px;right:6px;}
-.wp-dot.today{background:var(--accent);}
-.wp-item{display:flex;align-items:flex-start;gap:3px;margin-bottom:2px;font-size:10px;line-height:1.3;background:rgba(255,255,255,.7);border-radius:2px;padding:1px 2px;}
-.wp-item .wp-cb{width:11px;height:11px;border-radius:2px;border:1.5px solid #B8C4D0;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.wp-wl{padding:10px 12px;border-bottom:1.5px solid #B8C4D0;background:#fff;}
+.wp-wl-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.wp-wl-add input{width:100%;border:none;border-bottom:1px dashed #B8C4D0;font-size:12px;padding:4px 0;outline:none;background:transparent;font-family:inherit;margin-top:4px;}
+.wp-days{display:flex;flex-direction:column;}
+.wp-day{display:flex;border-bottom:1px solid #E8ECF0;min-height:50px;}
+.wp-day:last-child{border-bottom:none;}
+.wp-day-hdr{width:80px;flex-shrink:0;padding:8px;background:#F8FAFB;border-right:1px solid #E8ECF0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.wp-day-hdr .wp-day-label{font-size:11px;font-weight:600;color:var(--text);}
+.wp-day-hdr .wp-day-date{font-size:10px;color:var(--sub);margin-top:2px;}
+.wp-day-hdr.is-today .wp-day-label{color:var(--accent);}
+.wp-day-hdr.is-today .wp-day-date{color:var(--accent);font-weight:600;}
+.wp-day-content{flex:1;padding:6px 10px;position:relative;}
+.wp-item{display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;font-size:12px;line-height:1.4;}
+.wp-item .wp-cb{width:13px;height:13px;border-radius:3px;border:1.5px solid #B8C4D0;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .wp-item .wp-cb.chk{background:var(--accent);border-color:var(--accent);}
-.wp-item .wp-cb.chk::after{content:'✓';color:#fff;font-size:7px;font-weight:700;}
+.wp-item .wp-cb.chk::after{content:'✓';color:#fff;font-size:8px;font-weight:700;}
 .wp-item .wp-tx{color:var(--text);word-break:break-all;cursor:pointer;flex:1;}
 .wp-item .wp-tx.dn{text-decoration:line-through;color:var(--sub);}
-.wp-item .wp-del{color:var(--border);font-size:10px;cursor:pointer;flex-shrink:0;padding:0 2px;}
+.wp-item .wp-del{color:var(--border);font-size:12px;cursor:pointer;flex-shrink:0;padding:0 2px;}
 .wp-item .wp-del:active{color:var(--danger);}
-.wp-add input{width:100%;border:none;border-bottom:1px dashed #B8C4D0;font-size:10px;padding:2px 0;outline:none;background:transparent;font-family:inherit;margin-top:2px;}
+.wp-day-add input{width:100%;border:none;border-bottom:1px dashed var(--border);font-size:11px;padding:3px 0;outline:none;background:transparent;font-family:inherit;margin-top:2px;}
 .wp-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .wp-nav button{padding:6px;font-size:18px;color:var(--sub);}
 .wp-nav .wp-ntl{font-size:14px;font-weight:600;text-align:center;}
@@ -285,35 +285,32 @@ function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date());
 
 if(S.tv==='week'){
 // ── WEEKLY PLANNER ──
-const st=new Date(d);st.setDate(d.getDate()-(d.getDay()===0?6:(d.getDay()-1))); // 월요일 시작
+const st=new Date(d);st.setDate(d.getDate()-(d.getDay()===0?6:(d.getDay()-1)));
 const wkDates=[];for(let i=0;i<7;i++){const dd=new Date(st);dd.setDate(st.getDate()+i);wkDates.push(dd);}
 const wkEnd=wkDates[6];
-const dayLabels=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const dayLabelsFull=['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
 const today=new Date();
-
-// Weekly list (이번 주 전체 할일)
-const allWk=S.todos.filter(t=>{const td2=pD(t.date);return td2>=wkDates[0]&&td2<=wkEnd;});
 
 function wpItems(dateStr){const items=S.todos.filter(t=>t.date===dateStr);
 return items.map(t=>`<div class="wp-item"><div class="wp-cb ${t.done?'chk':''}" data-tg="${t.id}"></div><span class="wp-tx ${t.done?'dn':''}" data-edt="${t.id}">${e(t.text)}</span><span class="wp-del" data-dt="${t.id}">×</span></div>`).join('');}
 
-// 상단 행: Weekly List + Mon~Wed
-let r1h=`<div class="wp-hdr">Weekly list</div>`;
-for(let i=0;i<3;i++)r1h+=`<div class="wp-hdr">${dayLabels[i]}</div>`;
-let r1c=`<div class="wp-cell wl">${allWk.map(t=>`<div class="wp-item"><div class="wp-cb ${t.done?'chk':''}" data-tg="${t.id}"></div><span class="wp-tx ${t.done?'dn':''}" data-edt="${t.id}">${e(t.text)}</span></div>`).join('')}</div>`;
-for(let i=0;i<3;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
-r1c+=`<div class="wp-cell"><div class="wp-dot ${isT?'today':''}"></div><div class="wp-date ${isT?'is-today':''}">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div>${wpItems(ds)}<div class="wp-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div>`;}
+// Weekly list (별도 메모)
+const wlKey='bw-wl-'+fD(st);
+const wlItems=ld(wlKey,[]);
+let wlHtml=wlItems.map((w,i)=>`<div class="wp-item"><div class="wp-cb ${w.done?'chk':''}" data-wltg="${i}"></div><span class="wp-tx ${w.done?'dn':''}">${e(w.text)}</span><span class="wp-del" data-wldel="${i}">×</span></div>`).join('');
 
-// 하단 행: Thu~Sun
-let r2h='';for(let i=3;i<7;i++)r2h+=`<div class="wp-hdr">${dayLabels[i]}</div>`;
-let r2c='';for(let i=3;i<7;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
-r2c+=`<div class="wp-cell"><div class="wp-dot ${isT?'today':''}"></div><div class="wp-date ${isT?'is-today':''}">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div>${wpItems(ds)}<div class="wp-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div>`;}
+// 요일 행들
+let daysHtml='<div class="wp-days">';
+for(let i=0;i<7;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
+daysHtml+=`<div class="wp-day"><div class="wp-day-hdr ${isT?'is-today':''}"><div class="wp-day-label">${dayLabels[i]}</div><div class="wp-day-date">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div></div><div class="wp-day-content">${wpItems(ds)}<div class="wp-day-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div></div>`;}
+daysHtml+='</div>';
 
 return`<div class="wp-nav"><button data-wn="-1">←</button><div class="wp-ntl">${st.getMonth()+1}월 ${st.getDate()}일 ~ ${wkEnd.getMonth()+1}월 ${wkEnd.getDate()}일</div><button data-wn="1">→</button></div>
 <div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>
 <div class="wp"><div class="wp-title">WEEKLY PLANNER</div>
-<div class="wp-row wpr-top">${r1h}</div><div class="wp-row wpr-top">${r1c}</div>
-<div class="wp-row">${r2h}</div><div class="wp-row">${r2c}</div></div>`;}
+<div class="wp-wl"><div class="wp-wl-title">📌 Weekly List</div>${wlHtml}<div class="wp-wl-add"><input placeholder="이번 주 중요 메모 추가" data-wladd="${wlKey}"></div></div>
+${daysHtml}</div>`;}
 
 // ── DAILY VIEW ──
 const dt=S.todos.filter(t=>t.date===S.selDate),so=[...dt],dc=dt.filter(t=>t.done).length,tot=dt.length,pct=tot?Math.round(dc/tot*100):0;
@@ -483,6 +480,10 @@ const ab=document.getElementById('ab');if(ab)ab.onclick=aTd;
 document.querySelectorAll('[data-wn]').forEach(b=>b.onclick=()=>{const d=pD(S.selDate);d.setDate(d.getDate()+parseInt(b.dataset.wn)*7);S.selDate=fD(d);R();});
 // Weekly planner inline add
 document.querySelectorAll('[data-wpadd]').forEach(inp=>{inp.onkeydown=(ev)=>{if(ev.key==='Enter'&&inp.value.trim()){S.todos.push({id:uid(),text:inp.value.trim(),done:false,date:inp.dataset.wpadd,priority:false});ps();R();}};});
+// Weekly list memo
+document.querySelectorAll('[data-wladd]').forEach(inp=>{inp.onkeydown=(ev)=>{if(ev.key==='Enter'&&inp.value.trim()){const k=inp.dataset.wladd;const items=ld(k,[]);items.push({text:inp.value.trim(),done:false});sv(k,items);R();}};});
+document.querySelectorAll('[data-wltg]').forEach(b=>b.onclick=()=>{const i=parseInt(b.dataset.wltg);const d2=pD(S.selDate);const st=new Date(d2);st.setDate(d2.getDate()-(d2.getDay()===0?6:(d2.getDay()-1)));const k='bw-wl-'+fD(st);const items=ld(k,[]);if(items[i])items[i].done=!items[i].done;sv(k,items);R();});
+document.querySelectorAll('[data-wldel]').forEach(b=>b.onclick=()=>{const i=parseInt(b.dataset.wldel);const d2=pD(S.selDate);const st=new Date(d2);st.setDate(d2.getDate()-(d2.getDay()===0?6:(d2.getDay()-1)));const k='bw-wl-'+fD(st);const items=ld(k,[]);items.splice(i,1);sv(k,items);R();});
 const ajb=document.getElementById('ajb');if(ajb)ajb.onclick=()=>{S.jf={company:'',position:'',deadline:'',applyDate:'',examDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''};S.ejid=null;S.pf=[];S.sjf=true;R();};
 document.querySelectorAll('[data-jf]').forEach(b=>{b.onclick=()=>{const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:v);R();};b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:v);R();},{passive:false});});
 document.querySelectorAll('[data-ej]').forEach(b=>b.onclick=()=>{const j=S.jobs.find(x=>x.id===b.dataset.ej);if(!j)return;S.jf={...j,examDate:j.examDate||''};S.ejid=j.id;S.pf=[];S.sjf=true;R();});
@@ -493,7 +494,7 @@ const cjb=document.getElementById('cjb');if(cjb)cjb.onclick=()=>{S.sjf=false;S.p
 const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{const defCat=S.aCat&&S.aCat!=='__uncat__'?S.aCat:(S.cats[0]?S.cats[0].id:'');S.inf={title:'',content:'',category:defCat,url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;R();};
 document.querySelectorAll('[data-ei]').forEach(b=>b.onclick=()=>{const inf=S.infos.find(x=>x.id===b.dataset.ei);if(!inf)return;S.inf={...inf};S.eiid=inf.id;S.pf=[];S.sif=true;R();});
 document.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{S.infos=S.infos.filter(x=>x.id!==b.dataset.di);delete S.files[b.dataset.di];ps();R();});
-document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{const v=b.dataset.cf;S.aCat=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);R();});
+document.querySelectorAll('[data-cf]').forEach(b=>{b.onclick=()=>{const v=b.dataset.cf;S.aCat=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);R();};b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();const v=b.dataset.cf;S.aCat=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);R();},{passive:false});});
 document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dc;const cat=catById(id);if(!cat)return;
 // 하위 폴더도 함께 삭제
 const allIds=catDescendants(id);
