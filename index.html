@@ -68,6 +68,33 @@ a{color:var(--blue);text-decoration:none;}
 .wc{padding:10px 4px;text-align:center;border-radius:10px;background:#fff;border:1px solid var(--border);cursor:pointer;}
 .wc.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
 .wc.tod:not(.sel){border:2px solid var(--accent);}
+/* Weekly Planner */
+.wp{border:1.5px solid #B8C4D0;border-radius:4px;overflow:hidden;margin-bottom:16px;background:#fff;}
+.wp-title{text-align:center;font-size:13px;font-weight:700;letter-spacing:2px;padding:8px;color:var(--text);border-bottom:1.5px solid #B8C4D0;background:#F8FAFB;}
+.wp-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1.5px solid #B8C4D0;}
+.wp-row:last-child{border-bottom:none;}
+.wp-row.wpr-top{grid-template-columns:1.3fr 1fr 1fr 1fr;}
+.wp-hdr{font-size:10px;font-weight:600;text-align:center;padding:5px 4px;background:#F0F3F6;border-right:1px solid #B8C4D0;color:var(--text);}
+.wp-hdr:last-child{border-right:none;}
+.wp-cell{min-height:90px;padding:6px;border-right:1px solid #B8C4D0;position:relative;background:url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0H0v20' fill='none' stroke='%23E8ECF0' stroke-width='.5'/%3E%3C/svg%3E") repeat;}
+.wp-cell:last-child{border-right:none;}
+.wp-cell.wl{background:#fff;}
+.wp-cell .wp-date{font-size:9px;color:var(--sub);margin-bottom:4px;}
+.wp-cell .wp-date.is-today{color:var(--accent);font-weight:700;}
+.wp-dot{width:7px;height:7px;border-radius:4px;background:#B8C4D0;position:absolute;top:6px;right:6px;}
+.wp-dot.today{background:var(--accent);}
+.wp-item{display:flex;align-items:flex-start;gap:3px;margin-bottom:2px;font-size:10px;line-height:1.3;background:rgba(255,255,255,.7);border-radius:2px;padding:1px 2px;}
+.wp-item .wp-cb{width:11px;height:11px;border-radius:2px;border:1.5px solid #B8C4D0;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.wp-item .wp-cb.chk{background:var(--accent);border-color:var(--accent);}
+.wp-item .wp-cb.chk::after{content:'✓';color:#fff;font-size:7px;font-weight:700;}
+.wp-item .wp-tx{color:var(--text);word-break:break-all;cursor:pointer;flex:1;}
+.wp-item .wp-tx.dn{text-decoration:line-through;color:var(--sub);}
+.wp-item .wp-del{color:var(--border);font-size:10px;cursor:pointer;flex-shrink:0;padding:0 2px;}
+.wp-item .wp-del:active{color:var(--danger);}
+.wp-add input{width:100%;border:none;border-bottom:1px dashed #B8C4D0;font-size:10px;padding:2px 0;outline:none;background:transparent;font-family:inherit;margin-top:2px;}
+.wp-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.wp-nav button{padding:6px;font-size:18px;color:var(--sub);}
+.wp-nav .wp-ntl{font-size:14px;font-weight:600;text-align:center;}
 .wc .wd{font-size:10px;opacity:.7;}.wc .wn{font-size:15px;font-weight:600;margin:2px 0;}.wc .wt{font-size:9px;color:var(--sub);}.wc.sel .wt{color:rgba(255,255,255,.8);}
 .sb2{font-size:14px;padding:4px;}.son{color:var(--accent);}.sof{color:var(--border);}
 .db2{font-size:16px;padding:4px;color:var(--sub);}
@@ -144,20 +171,18 @@ a{color:var(--blue);text-decoration:none;}
 .dz h4{font-size:13px;color:var(--danger);margin-bottom:8px;}
 .dz button{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;background:var(--danger);color:#fff;}
 .folder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px;}
-.folder{position:relative;background:#fff;border-radius:0 8px 8px 8px;padding:20px 14px 14px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;margin-top:12px;}
+.folder{position:relative;background:#fff;border-radius:0 8px 8px 8px;padding:24px 14px 18px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;margin-top:12px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .folder:active{background:#F9FAFB;transform:scale(.98);}
-.folder::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#fff;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;}
-.folder::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:2px;background:#fff;}
-.folder-name{font-size:13px;font-weight:600;color:var(--text);word-break:break-all;margin-top:2px;}
-.folder-count{font-size:11px;color:var(--sub);margin-top:4px;}
-.folder-actions{display:flex;gap:6px;justify-content:center;margin-top:6px;}
-.folder-actions button{font-size:11px;padding:2px 6px;border-radius:4px;}
+.folder::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:inherit;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;pointer-events:none;}
+.folder::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:2px;background:inherit;pointer-events:none;}
+.folder-name{font-size:14px;font-weight:600;color:var(--text);word-break:break-all;}
+.folder-count{font-size:12px;color:var(--sub);margin-top:4px;}
 .folder-back{display:flex;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;color:var(--accent);font-size:14px;font-weight:500;}
 .folder-back:active{opacity:.7;}
-.folder-add{position:relative;background:#FAFBFC;border-radius:0 8px 8px 8px;padding:20px 14px 14px;border:2px dashed var(--border);cursor:pointer;text-align:center;margin-top:12px;}
+.folder-add{position:relative;background:#FAFBFC;border-radius:0 8px 8px 8px;padding:24px 14px 18px;border:2px dashed var(--border);cursor:pointer;text-align:center;margin-top:12px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .folder-add:active{background:#F0F2F4;}
-.folder-add::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#FAFBFC;border:2px dashed var(--border);border-bottom:none;border-radius:8px 8px 0 0;}
-.folder-add::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:3px;background:#FAFBFC;}
+.folder-add::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#FAFBFC;border:2px dashed var(--border);border-bottom:none;border-radius:8px 8px 0 0;pointer-events:none;}
+.folder-add::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:3px;background:#FAFBFC;pointer-events:none;}
 .folder-add .folder-name{color:var(--sub);font-weight:400;}
 .folder-add-icon{font-size:24px;color:var(--border);margin-bottom:4px;}
 .color-palette{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
@@ -178,13 +203,24 @@ function sPw(p){localStorage.setItem(K.pw,p);}
 
 // 카테고리 색상 팔레트
 const FCOLORS=['#4A8DB7','#2D8B4E','#E67E22','#8B7BB5','#D96B5A','#F1C40F','#E91E63','#00BCD4','#795548','#607D8B','#9C27B0','#FF9800'];
-// cats 마이그레이션: 문자열 배열 → 객체 배열
-function migrateCats(raw){if(!raw||!raw.length)return[{name:'채용정보',color:'#4A8DB7'},{name:'개발',color:'#2D8B4E'},{name:'자격증',color:'#E67E22'},{name:'기타',color:'#607D8B'}];
-if(typeof raw[0]==='string')return raw.map((n,i)=>({name:n,color:FCOLORS[i%FCOLORS.length]}));return raw;}
-function catName(i){return S.cats[i]?S.cats[i].name:'';}
-function catColor(i){return S.cats[i]?S.cats[i].color:'#607D8B';}
+// cats: [{id, name, color, parent(null=root)}]
+function migrateCats(raw){
+if(!raw||!raw.length)return[{id:uid(),name:'채용정보',color:'#4A8DB7',parent:null},{id:uid(),name:'개발',color:'#2D8B4E',parent:null},{id:uid(),name:'자격증',color:'#E67E22',parent:null},{id:uid(),name:'기타',color:'#607D8B',parent:null}];
+if(typeof raw[0]==='string')return raw.map((n,i)=>({id:uid(),name:n,color:FCOLORS[i%FCOLORS.length],parent:null}));
+// 기존 {name,color} → {id,name,color,parent} 마이그레이션
+return raw.map(c=>({id:c.id||uid(),name:c.name,color:c.color||'#607D8B',parent:c.parent||null}));}
+function catById(id){return S.cats.find(c=>c.id===id);}
 function catByName(n){return S.cats.find(c=>c.name===n);}
+function catChildren(parentId){return S.cats.filter(c=>c.parent===(parentId||null));}
 function catNames(){return S.cats.map(c=>c.name);}
+// 폴더 경로(breadcrumb) 구하기
+function catPath(catId){const path=[];let cur=catById(catId);while(cur){path.unshift(cur);cur=cur.parent?catById(cur.parent):null;}return path;}
+// 카테고리의 전체 경로명 (카테고리 select용)
+function catFullName(cat){return catPath(cat.id).map(c=>c.name).join(' / ');}
+// 하위 카테고리 포함 모든 id
+function catDescendants(catId){const ids=[catId];const q=[catId];while(q.length){const p=q.shift();S.cats.filter(c=>c.parent===p).forEach(c=>{ids.push(c.id);q.push(c.id);});}return ids;}
+// infos에서 특정 폴더(하위 포함 안함)에 속한 것만
+function infosInCat(catId){return S.infos.filter(i=>i.category===catId);}
 
 // ── IndexedDB for files ──
 const DB_NAME='bw-db',DB_VER=1,DB_STORE='files';
@@ -238,11 +274,45 @@ function rFL(p){const f=gF(p);if(!f.length)return'';return`<div class="fl">${f.m
 function rPFs(){if(!S.pf.length)return'';return`<div class="fl">${S.pf.map((x,i)=>`<div class="fi"><div class="ft ${iI(x.name)?'ftcl':''}" data-pfpv="${i}" style="cursor:pointer">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rpf="${i}">×</span></div>`).join('')}</div>`;}
 function rPv(){const p=S.prev;if(p.type==='image')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><img src="${p.data}"></div>`;if(p.type==='pdf')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><iframe src="${p.data}"></iframe></div>`;return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><div style="background:#fff;padding:32px;border-radius:12px;text-align:center"><div style="font-size:48px;margin-bottom:12px">${fI(p.name)}</div><div style="font-size:14px;margin-bottom:16px">${e(p.name)}</div><a href="${p.data}" download="${e(p.name)}" class="bp" style="text-decoration:none;display:inline-block">다운로드</a></div></div>`;}
 
-function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date()),dt=S.todos.filter(t=>t.date===S.selDate),so=[...dt],dc=dt.filter(t=>t.done).length,tot=dt.length,pct=tot?Math.round(dc/tot*100):0;
-let wk='';if(S.tv==='week'){const st=new Date(d);st.setDate(d.getDate()-d.getDay());wk='<div class="wg">';for(let i=0;i<7;i++){const dd=new Date(st);dd.setDate(st.getDate()+i);const k=fD(dd),c=S.todos.filter(t=>t.date===k).length,dn=S.todos.filter(t=>t.date===k&&t.done).length,sl=k===S.selDate,td=k===fD(new Date());wk+=`<div class="wc ${sl?'sel':''} ${td&&!sl?'tod':''}" data-wd="${k}"><div class="wd">${DY[dd.getDay()]}</div><div class="wn">${dd.getDate()}</div>${c?`<div class="wt">${dn}/${c}</div>`:''}</div>`;}wk+='</div>';}
+function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date());
+
+if(S.tv==='week'){
+// ── WEEKLY PLANNER ──
+const st=new Date(d);st.setDate(d.getDate()-(d.getDay()===0?6:(d.getDay()-1))); // 월요일 시작
+const wkDates=[];for(let i=0;i<7;i++){const dd=new Date(st);dd.setDate(st.getDate()+i);wkDates.push(dd);}
+const wkEnd=wkDates[6];
+const dayLabels=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const today=new Date();
+
+// Weekly list (이번 주 전체 할일)
+const allWk=S.todos.filter(t=>{const td2=pD(t.date);return td2>=wkDates[0]&&td2<=wkEnd;});
+
+function wpItems(dateStr){const items=S.todos.filter(t=>t.date===dateStr);
+return items.map(t=>`<div class="wp-item"><div class="wp-cb ${t.done?'chk':''}" data-tg="${t.id}"></div><span class="wp-tx ${t.done?'dn':''}" data-edt="${t.id}">${e(t.text)}</span><span class="wp-del" data-dt="${t.id}">×</span></div>`).join('');}
+
+// 상단 행: Weekly List + Mon~Wed
+let r1h=`<div class="wp-hdr">Weekly list</div>`;
+for(let i=0;i<3;i++)r1h+=`<div class="wp-hdr">${dayLabels[i]}</div>`;
+let r1c=`<div class="wp-cell wl">${allWk.map(t=>`<div class="wp-item"><div class="wp-cb ${t.done?'chk':''}" data-tg="${t.id}"></div><span class="wp-tx ${t.done?'dn':''}" data-edt="${t.id}">${e(t.text)}</span></div>`).join('')}</div>`;
+for(let i=0;i<3;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
+r1c+=`<div class="wp-cell"><div class="wp-dot ${isT?'today':''}"></div><div class="wp-date ${isT?'is-today':''}">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div>${wpItems(ds)}<div class="wp-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div>`;}
+
+// 하단 행: Thu~Sun
+let r2h='';for(let i=3;i<7;i++)r2h+=`<div class="wp-hdr">${dayLabels[i]}</div>`;
+let r2c='';for(let i=3;i<7;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
+r2c+=`<div class="wp-cell"><div class="wp-dot ${isT?'today':''}"></div><div class="wp-date ${isT?'is-today':''}">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div>${wpItems(ds)}<div class="wp-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div>`;}
+
+return`<div class="wp-nav"><button data-wn="-1">←</button><div class="wp-ntl">${st.getMonth()+1}월 ${st.getDate()}일 ~ ${wkEnd.getMonth()+1}월 ${wkEnd.getDate()}일</div><button data-wn="1">→</button></div>
+<div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>
+<div class="wp"><div class="wp-title">WEEKLY PLANNER</div>
+<div class="wp-row wpr-top">${r1h}</div><div class="wp-row wpr-top">${r1c}</div>
+<div class="wp-row">${r2h}</div><div class="wp-row">${r2c}</div></div>`;}
+
+// ── DAILY VIEW ──
+const dt=S.todos.filter(t=>t.date===S.selDate),so=[...dt],dc=dt.filter(t=>t.done).length,tot=dt.length,pct=tot?Math.round(dc/tot*100):0;
 let pg='';if(tot)pg=`<div class="card" style="margin-bottom:12px;padding:12px 16px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-bottom:6px"><span>${dc}/${tot} 완료</span><span style="font-weight:600;color:var(--accent)">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%"></div></div></div>`;
 let ls=!so.length?'<div class="em">등록된 할 일이 없어요</div>':`<div id="todoList">${so.map((t,idx)=>`<div class="ti ${t.done?'done':''} ${t.priority?'pri':''}" data-dragid="${t.id}" draggable="true"><div class="dh" data-drag="${t.id}">☰</div><div class="cb ${t.done?'chk':''}" data-tg="${t.id}"></div><div style="flex:1"><span class="tt ${t.done?'dn':''}" data-edt="${t.id}">${t.priority?'<span style="color:var(--danger);margin-right:4px">★</span>':''}${e(t.text)}</span>${rCFs(t.id)}</div><button class="sb2 ${t.priority?'son':'sof'}" data-sr="${t.id}">★</button><button class="db2" data-dt="${t.id}">×</button></div>`).join('')}</div>`;
-return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${wk}${pg}<div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">📎 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
+return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${pg}<div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">📎 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
 
 function rJb(){const stsOrder=['최종합격','면접예정','서류합격','지원완료','준비중','불합격'];
 const activeJF=S.jobFilter;
@@ -271,44 +341,66 @@ function rJCard(j){return`<div class="jc" style="border-left-color:${SC[j.status
 function rJM(){const f=S.jf,sts=['준비중','지원완료','서류합격','면접예정','최종합격','불합격'];return`<div class="mo" id="jmo"><div class="mb"><h3>${S.ejid?'수정':'입사지원 추가'}</h3><div class="fg"><label>회사명 *</label><input id="jc" value="${e(f.company)}"></div><div class="fg"><label>포지션</label><input id="jp" value="${e(f.position)}"></div><div class="fg"><label>공고 마감일</label><input type="date" id="jdl" value="${f.deadline}"></div><div class="fg"><label>지원일</label><input type="date" id="jad" value="${f.applyDate}"></div><div class="fg"><label>시험일</label><input type="date" id="jex" value="${f.examDate||''}"></div><div class="fg"><label>서류 발표일</label><input type="date" id="jrd" value="${f.resultDate}"></div><div class="fg"><label>면접일</label><input type="date" id="jid" value="${f.interviewDate}"></div><div class="fg"><label>상태</label><select id="jst">${sts.map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label>메모</label><textarea id="jnn" rows="2">${e(f.notes)}</textarea></div><div class="fg"><label>첨부파일</label>${S.ejid?rFL(S.ejid):''}<label class="fab" data-ff="job" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sjb">저장</button><button class="cn" id="cjb">취소</button></div></div></div>`;}
 
 function rIn(){
-// 폴더 열린 상태
-if(S.aCat){
-const fil=S.infos.filter(i=>i.category===S.aCat);
-const catObj=catByName(S.aCat);
-const cc=catObj?catObj.color:'#607D8B';
-let cd=!fil.length?`<div class="em">"${S.aCat}" 폴더가 비어있어요</div>`:
-`<div id="infoList">${[...fil].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">☰</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;
-return`<div class="sh"><h2>아카이브</h2><button class="bp" id="aib" style="padding:8px 14px">+ 추가</button></div>
-<div class="folder-back" data-cf="__all__">← 전체 폴더</div>
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-<div style="width:14px;height:14px;border-radius:7px;background:${cc};flex-shrink:0"></div>
-<span style="font-size:15px;font-weight:600">${e(S.aCat)}</span><span style="font-size:12px;color:var(--sub)">${fil.length}건</span>
-<button class="be" data-ec="${e(S.aCat)}" style="font-size:11px">✏️ 이름</button>
-<button class="be" data-ecc="${e(S.aCat)}" style="font-size:11px">🎨 색상</button>
-<button class="bd" data-dc="${e(S.aCat)}" style="font-size:11px">삭제</button></div>
-${S.editCatColor===S.aCat?`<div class="color-palette" style="margin-bottom:12px">${FCOLORS.map(cl=>`<div class="color-dot ${cc===cl?'sel':''}" style="background:${cl}" data-setcc="${cl}"></div>`).join('')}</div>`:''}
-${cd}`;}
+const curId=S.aCat; // 현재 열린 폴더 id (null=루트)
+const curCat=curId?catById(curId):null;
+const children=catChildren(curId);
+const items=curId?infosInCat(curId):[];
 
-// 폴더 목록
-let folders='<div class="folder-grid" id="catFolderList">';
-S.cats.forEach((c,i)=>{const n=S.infos.filter(x=>x.category===c.name).length;
-folders+=`<div class="folder" data-cf="${e(c.name)}" data-catdrag="${e(c.name)}" draggable="true" style="background:${c.color}15;border-color:${c.color}40"><div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건</div></div>`;});
-folders+='<div style="position:relative;margin-top:12px">';
-// 미분류
-const uncatCount=S.infos.filter(x=>!x.category||!catNames().includes(x.category)).length;
-if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__" style="background:#F5F5F5;border-color:#ddd"><div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;
-// 추가 버튼
+// 브레드크럼
+let bread='';
+if(curId){
+const path=catPath(curId);
+bread=`<div class="folder-back"><span data-cf="__root__" style="cursor:pointer">📁 전체</span>`;
+path.forEach((p,i)=>{bread+=` <span style="color:var(--sub);margin:0 2px">/</span> <span data-cf="${p.id}" style="cursor:pointer;${i===path.length-1?'font-weight:600;color:var(--text)':'color:var(--accent)'}">${e(p.name)}</span>`;});
+bread+=`</div>`;}
+
+// 폴더 안 헤더
+let header='';
+if(curCat){
+const cc=curCat.color;
+const totalInFolder=items.length;
+header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+<div style="width:14px;height:14px;border-radius:7px;background:${cc};flex-shrink:0"></div>
+<span style="font-size:15px;font-weight:600">${e(curCat.name)}</span><span style="font-size:12px;color:var(--sub)">${totalInFolder}건</span>
+<button class="be" data-ec="${curCat.id}" style="font-size:11px">✏️ 이름</button>
+<button class="be" data-ecc="${curCat.id}" style="font-size:11px">🎨 색상</button>
+<button class="bd" data-dc="${curCat.id}" style="font-size:11px">삭제</button></div>
+${S.editCatColor===curCat.id?`<div class="color-palette" style="margin-bottom:12px">${FCOLORS.map(cl=>`<div class="color-dot ${cc===cl?'sel':''}" style="background:${cl}" data-setcc="${cl}"></div>`).join('')}</div>`:''}`;}
+
+// 하위 폴더 그리드
+let folders='';
+if(children.length||!curId){
+folders='<div class="folder-grid" id="catFolderList">';
+children.forEach(c=>{const n=infosInCat(c.id).length;const subCount=catChildren(c.id).length;
+folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable="true" style="background:${c.color}15;border-color:${c.color}40"><div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건${subCount?` · 📁${subCount}`:''}</div></div>`;});
+// 미분류 (루트만)
+if(!curId){const uncatCount=S.infos.filter(x=>!x.category||!catById(x.category)).length;
+if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__" style="background:#F5F5F5;border-color:#ddd"><div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;}
+// 새 폴더 버튼
 if(S.sac){
 folders+=`<div class="folder-add"><div class="aci" style="justify-content:center;flex-wrap:wrap"><input id="nci" placeholder="폴더명" value="${e(S.nci)}" style="width:80px;text-align:center"><button class="bp" style="padding:4px 8px;font-size:11px" id="scb">추가</button><button style="padding:4px 8px;font-size:11px;color:var(--sub)" id="ccb">취소</button></div>
 <div class="color-palette" style="margin-top:8px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-ncc="${cl}"></div>`).join('')}</div></div>`;
 }else{
 folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;}
-folders+='</div></div>';
+folders+='</div>';}
+
+// 현재 폴더의 정보 카드 목록
+let cd='';
+if(curId&&curId!=='__uncat__'){
+cd=!items.length&&!children.length?`<div class="em">폴더가 비어있어요</div>`:
+items.length?`<div id="infoList">${[...items].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">☰</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`:'';}
+if(curId==='__uncat__'){
+const uncatItems=S.infos.filter(x=>!x.category||!catById(x.category));
+cd=!uncatItems.length?`<div class="em">미분류 항목이 없어요</div>`:
+`<div id="infoList">${[...uncatItems].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">☰</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;}
 
 return`<div class="sh"><h2>아카이브</h2><button class="bp" id="aib" style="padding:8px 14px">+ 추가</button></div>
-<div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.infos.length}건</div>
-${folders}`;}
-function rIM(){const f=S.inf;return`<div class="mo" id="imo"><div class="mb"><h3>${S.eiid?'수정':'정보 추가'}</h3><div class="fg"><label>제목 *</label><input id="iit" value="${e(f.title)}"></div><div class="fg"><label>카테고리</label><select id="iic">${catNames().map(c=>`<option value="${c}" ${f.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="fg"><label>내용</label><textarea id="iico" rows="4">${e(f.content)}</textarea></div><div class="fg"><label>URL</label><input id="iiu" placeholder="https://" value="${e(f.url)}"></div><div class="fg"><label>태그 (쉼표로 구분)</label><input id="iig" placeholder="예: 채용, 공기업" value="${e(f.tags)}"></div><div class="fg"><label>첨부파일</label>${S.eiid?rFL(S.eiid):''}<label class="fab" data-ff="info" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sib">저장</button><button class="cn" id="cib">취소</button></div></div></div>`;}
+${bread}${header}
+<div style="font-size:12px;color:var(--sub);margin-bottom:8px">${!curId?'총 '+S.infos.length+'건':''}</div>
+${folders}${cd}`;}
+function rIM(){const f=S.inf;
+const catOpts=S.cats.map(c=>`<option value="${c.id}" ${f.category===c.id?'selected':''}>${catFullName(c)}</option>`).join('');
+return`<div class="mo" id="imo"><div class="mb"><h3>${S.eiid?'수정':'정보 추가'}</h3><div class="fg"><label>제목 *</label><input id="iit" value="${e(f.title)}"></div><div class="fg"><label>카테고리</label><select id="iic">${catOpts}</select></div><div class="fg"><label>내용</label><textarea id="iico" rows="4">${e(f.content)}</textarea></div><div class="fg"><label>URL</label><input id="iiu" placeholder="https://" value="${e(f.url)}"></div><div class="fg"><label>태그 (쉼표로 구분)</label><input id="iig" placeholder="예: 채용, 공기업" value="${e(f.tags)}"></div><div class="fg"><label>첨부파일</label>${S.eiid?rFL(S.eiid):''}<label class="fab" data-ff="info" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sib">저장</button><button class="cn" id="cib">취소</button></div></div></div>`;}
 
 function rCl(){const y=S.cy,m=S.cm,fd=new Date(y,m,1).getDay(),dm=new Date(y,m+1,0).getDate(),td=new Date(),ms=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 let cl='';for(let i=0;i<fd;i++)cl+=`<div class="ccl" style="cursor:default"></div>`;
@@ -380,21 +472,28 @@ dragId=null;curOver=null;});
 });})();
 const tii=document.getElementById('tii');if(tii){tii.oninput=()=>{S.tIn=tii.value;};tii.onkeydown=(ev)=>{if(ev.key==='Enter')aTd();};}
 const ab=document.getElementById('ab');if(ab)ab.onclick=aTd;
+// Weekly planner nav
+document.querySelectorAll('[data-wn]').forEach(b=>b.onclick=()=>{const d=pD(S.selDate);d.setDate(d.getDate()+parseInt(b.dataset.wn)*7);S.selDate=fD(d);R();});
+// Weekly planner inline add
+document.querySelectorAll('[data-wpadd]').forEach(inp=>{inp.onkeydown=(ev)=>{if(ev.key==='Enter'&&inp.value.trim()){S.todos.push({id:uid(),text:inp.value.trim(),done:false,date:inp.dataset.wpadd,priority:false});ps();R();}};});
 const ajb=document.getElementById('ajb');if(ajb)ajb.onclick=()=>{S.jf={company:'',position:'',deadline:'',applyDate:'',examDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''};S.ejid=null;S.pf=[];S.sjf=true;R();};
-document.querySelectorAll('[data-jf]').forEach(b=>b.onclick=()=>{const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:v);R();});
+document.querySelectorAll('[data-jf]').forEach(b=>{b.onclick=()=>{const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:v);R();};b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:v);R();},{passive:false});});
 document.querySelectorAll('[data-ej]').forEach(b=>b.onclick=()=>{const j=S.jobs.find(x=>x.id===b.dataset.ej);if(!j)return;S.jf={...j,examDate:j.examDate||''};S.ejid=j.id;S.pf=[];S.sjf=true;R();});
 document.querySelectorAll('[data-dj]').forEach(b=>b.onclick=()=>{S.jobs=S.jobs.filter(j=>j.id!==b.dataset.dj);delete S.files[b.dataset.dj];ps();R();});
 const jmo=document.getElementById('jmo');if(jmo)jmo.onclick=(ev)=>{if(ev.target===jmo){S.sjf=false;S.pf=[];R();}};
 const sjb=document.getElementById('sjb');if(sjb)sjb.onclick=sJb;
 const cjb=document.getElementById('cjb');if(cjb)cjb.onclick=()=>{S.sjf=false;S.pf=[];R();};
-const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{S.inf={title:'',content:'',category:S.aCat||catNames()[0]||'',url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;R();};
+const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{const defCat=S.aCat&&S.aCat!=='__uncat__'?S.aCat:(S.cats[0]?S.cats[0].id:'');S.inf={title:'',content:'',category:defCat,url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;R();};
 document.querySelectorAll('[data-ei]').forEach(b=>b.onclick=()=>{const inf=S.infos.find(x=>x.id===b.dataset.ei);if(!inf)return;S.inf={...inf};S.eiid=inf.id;S.pf=[];S.sif=true;R();});
 document.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{S.infos=S.infos.filter(x=>x.id!==b.dataset.di);delete S.files[b.dataset.di];ps();R();});
-document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{const v=b.dataset.cf;S.aCat=(v==='__all__'?null:v==='__uncat__'?'__uncat__':v);R();});
-document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const nm=b.dataset.dc;if(confirm(`"${nm}" 삭제?`)){S.cats=S.cats.filter(c=>c.name!==nm);if(S.aCat===nm)S.aCat=null;ps();R();}});
-document.querySelectorAll('[data-ec]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const old=b.dataset.ec;const nv=prompt('카테고리 이름 수정',old);if(nv!==null&&nv.trim()&&nv.trim()!==old){const nn=nv.trim();if(catNames().includes(nn)){alert('이미 존재하는 카테고리예요');return;}S.cats=S.cats.map(c=>c.name===old?{...c,name:nn}:c);S.infos=S.infos.map(i=>i.category===old?{...i,category:nn}:i);if(S.aCat===old)S.aCat=nn;ps();R();}});
+document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{const v=b.dataset.cf;S.aCat=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);R();});
+document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dc;const cat=catById(id);if(!cat)return;
+// 하위 폴더도 함께 삭제
+const allIds=catDescendants(id);
+if(confirm(`"${cat.name}" 폴더${allIds.length>1?'와 하위 폴더':''}를 삭제하시겠습니까?`)){S.cats=S.cats.filter(c=>!allIds.includes(c.id));if(S.aCat&&allIds.includes(S.aCat))S.aCat=cat.parent||null;ps();R();}});
+document.querySelectorAll('[data-ec]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.ec;const cat=catById(id);if(!cat)return;const nv=prompt('폴더 이름 수정',cat.name);if(nv!==null&&nv.trim()&&nv.trim()!==cat.name){S.cats=S.cats.map(c=>c.id===id?{...c,name:nv.trim()}:c);ps();R();}});
 document.querySelectorAll('[data-ecc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();S.editCatColor=S.editCatColor===b.dataset.ecc?null:b.dataset.ecc;R();});
-document.querySelectorAll('[data-setcc]').forEach(b=>b.onclick=()=>{const cl=b.dataset.setcc;S.cats=S.cats.map(c=>c.name===S.editCatColor?{...c,color:cl}:c);S.editCatColor=null;ps();R();});
+document.querySelectorAll('[data-setcc]').forEach(b=>b.onclick=()=>{const cl=b.dataset.setcc;S.cats=S.cats.map(c=>c.id===S.editCatColor?{...c,color:cl}:c);S.editCatColor=null;ps();R();});
 document.querySelectorAll('[data-ncc]').forEach(b=>b.onclick=()=>{S.newCatColor=b.dataset.ncc;R();});
 const sacb=document.getElementById('sacb');if(sacb)sacb.onclick=()=>{S.sac=true;R();setTimeout(()=>{const el=document.getElementById('nci');if(el)el.focus();},50);};
 const scb=document.getElementById('scb');if(scb)scb.onclick=sCt;
@@ -408,28 +507,35 @@ document.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>{S.cm+=parseInt(
 initDrag('jobList','data-jdrag','data-jdh',S.jobs,'jobs');
 // Info drag
 initDrag('infoList','data-idrag','data-idh',S.infos,'infos');
-// Category folder drag
+// Category folder drag (long press for touch)
 (function(){const list=document.getElementById('catFolderList');if(!list)return;let dragId=null;
 list.querySelectorAll('[data-catdrag]').forEach(el=>{
+// PC drag
 el.addEventListener('dragstart',ev=>{dragId=el.dataset.catdrag;el.classList.add('dragging');ev.dataTransfer.effectAllowed='move';});
 el.addEventListener('dragend',()=>{el.classList.remove('dragging');list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));});
 el.addEventListener('dragover',ev=>{ev.preventDefault();list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));if(el.dataset.catdrag!==dragId)el.classList.add('drag-over');});
 el.addEventListener('dragleave',()=>{el.classList.remove('drag-over');});
 el.addEventListener('drop',ev=>{ev.preventDefault();el.classList.remove('drag-over');const toId=el.dataset.catdrag;if(!dragId||dragId===toId)return;
-const fi=S.cats.findIndex(c=>c.name===dragId),ti2=S.cats.findIndex(c=>c.name===toId);
+const fi=S.cats.findIndex(c=>c.id===dragId),ti2=S.cats.findIndex(c=>c.id===toId);
 if(fi>=0&&ti2>=0){const item=S.cats.splice(fi,1)[0];S.cats.splice(ti2,0,item);ps();R();}});
-// Touch
-let touchY=0,clone=null,curOver=null;
+// Touch: long press to drag, short tap = click (don't preventDefault on touchstart)
+let touchY=0,clone=null,curOver=null,lpTimer=null,isDragging=false;
 el.addEventListener('touchstart',ev2=>{
-const t=ev2.target;if(t.closest('[data-cf]')&&!t.closest('[data-catdrag]'))return;
-ev2.preventDefault();dragId=el.dataset.catdrag;touchY=ev2.touches[0].clientY;
+isDragging=false;touchY=ev2.touches[0].clientY;
+lpTimer=setTimeout(()=>{isDragging=true;dragId=el.dataset.catdrag;
 clone=el.cloneNode(true);clone.style.cssText='position:fixed;z-index:90;opacity:.8;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.15);width:'+el.offsetWidth+'px;top:'+el.getBoundingClientRect().top+'px;left:'+el.getBoundingClientRect().left+'px;';
-document.body.appendChild(clone);el.classList.add('dragging');},{passive:false});
-el.addEventListener('touchmove',ev2=>{ev2.preventDefault();if(!clone)return;const ty=ev2.touches[0].clientY;clone.style.top=(el.getBoundingClientRect().top+(ty-touchY))+'px';
+document.body.appendChild(clone);el.classList.add('dragging');},400);
+},{passive:true});
+el.addEventListener('touchmove',ev2=>{
+if(!isDragging){clearTimeout(lpTimer);return;}
+ev2.preventDefault();if(!clone)return;const ty=ev2.touches[0].clientY;clone.style.top=(el.getBoundingClientRect().top+(ty-touchY))+'px';
 list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
-const target=document.elementFromPoint(ev2.touches[0].clientX,ty);if(target){const row=target.closest('[data-catdrag]');if(row&&row.dataset.catdrag!==dragId){row.classList.add('drag-over');curOver=row.dataset.catdrag;}else curOver=null;}},{passive:false});
-el.addEventListener('touchend',()=>{if(clone){clone.remove();clone=null;}el.classList.remove('dragging');list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
-if(curOver&&dragId&&curOver!==dragId){const fi=S.cats.findIndex(c=>c.name===dragId),ti2=S.cats.findIndex(c=>c.name===curOver);if(fi>=0&&ti2>=0){const item=S.cats.splice(fi,1)[0];S.cats.splice(ti2,0,item);ps();R();}}dragId=null;curOver=null;});
+const target=document.elementFromPoint(ev2.touches[0].clientX,ty);if(target){const row=target.closest('[data-catdrag]');if(row&&row.dataset.catdrag!==dragId){row.classList.add('drag-over');curOver=row.dataset.catdrag;}else curOver=null;}
+},{passive:false});
+el.addEventListener('touchend',()=>{clearTimeout(lpTimer);
+if(clone){clone.remove();clone=null;}el.classList.remove('dragging');list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
+if(isDragging&&curOver&&dragId&&curOver!==dragId){const fi=S.cats.findIndex(c=>c.id===dragId),ti2=S.cats.findIndex(c=>c.id===curOver);if(fi>=0&&ti2>=0){const item=S.cats.splice(fi,1)[0];S.cats.splice(ti2,0,item);ps();R();}}
+isDragging=false;dragId=null;curOver=null;});
 });})();
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
@@ -453,8 +559,8 @@ if(iit)S.inf={title:iit.value,category:iic.value,content:iico.value,url:iiu.valu
 function aTd(){if(!S.tIn.trim()&&!S.pf.length)return;const id=uid();S.todos.push({id,text:S.tIn.trim()||'(첨부파일)',done:false,date:S.selDate,priority:false});if(S.pf.length){S.files[id]=S.pf.slice();S.pf=[];S.ft=null;}S.tIn='';ps();R();setTimeout(()=>{const el=document.getElementById('tii');if(el)el.focus();},50);}
 function sJb(){const f={company:document.getElementById('jc').value,position:document.getElementById('jp').value,deadline:document.getElementById('jdl').value,applyDate:document.getElementById('jad').value,examDate:document.getElementById('jex').value,resultDate:document.getElementById('jrd').value,interviewDate:document.getElementById('jid').value,status:document.getElementById('jst').value,notes:document.getElementById('jnn').value};if(!f.company.trim())return;let id;if(S.ejid){S.jobs=S.jobs.map(j=>j.id===S.ejid?{...f,id:S.ejid}:j);id=S.ejid;}else{id=uid();S.jobs.push({...f,id});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sjf=false;S.ejid=null;ps();R();}
 function sIn(){const f={title:document.getElementById('iit').value,category:document.getElementById('iic').value,content:document.getElementById('iico').value,url:document.getElementById('iiu').value,tags:document.getElementById('iig').value};if(!f.title.trim())return;let id;if(S.eiid){S.infos=S.infos.map(i=>i.id===S.eiid?{...f,id:S.eiid,createdAt:i.createdAt}:i);id=S.eiid;}else{id=uid();S.infos.push({...f,id,createdAt:new Date().toISOString()});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sif=false;S.eiid=null;ps();R();}
-function sCt(){if(!S.nci.trim()||catNames().includes(S.nci.trim()))return;
-S.cats.push({name:S.nci.trim(),color:S.newCatColor||FCOLORS[S.cats.length%FCOLORS.length]});S.nci='';S.sac=false;S.newCatColor=null;ps();R();}
+function sCt(){if(!S.nci.trim())return;
+S.cats.push({id:uid(),name:S.nci.trim(),color:S.newCatColor||FCOLORS[S.cats.length%FCOLORS.length],parent:S.aCat&&S.aCat!=='__uncat__'?S.aCat:null});S.nci='';S.sac=false;S.newCatColor=null;ps();R();}
 
 function initDrag(listId,dragAttr,handleAttr,arr,arrKey){
 const list=document.getElementById(listId);if(!list)return;
