@@ -162,7 +162,7 @@ async function idbSave(files){try{const db=await openDB();const tx=db.transactio
 async function idbLoad(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readonly');const req=tx.objectStore(DB_STORE).get('allFiles');return new Promise((res)=>{req.onsuccess=()=>res(req.result||{});req.onerror=()=>res({});});}catch{return {};}}
 async function idbClear(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).clear();}catch{}}
 
-let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:ld(K.c,['채용정보','개발','자격증','기타']),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false};
+let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:ld(K.c,['채용정보','개발','자격증','기타']),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null};
 function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
@@ -213,10 +213,30 @@ let pg='';if(tot)pg=`<div class="card" style="margin-bottom:12px;padding:12px 16
 let ls=!so.length?'<div class="em">등록된 할 일이 없어요</div>':`<div id="todoList">${so.map((t,idx)=>`<div class="ti ${t.done?'done':''} ${t.priority?'pri':''}" data-dragid="${t.id}" draggable="true"><div class="dh" data-drag="${t.id}">☰</div><div class="cb ${t.done?'chk':''}" data-tg="${t.id}"></div><div style="flex:1"><span class="tt ${t.done?'dn':''}" data-edt="${t.id}">${t.priority?'<span style="color:var(--danger);margin-right:4px">★</span>':''}${e(t.text)}</span>${rCFs(t.id)}</div><button class="sb2 ${t.priority?'son':'sof'}" data-sr="${t.id}">★</button><button class="db2" data-dt="${t.id}">×</button></div>`).join('')}</div>`;
 return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${wk}${pg}<div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">📎 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
 
-function rJb(){const sts=['준비중','지원완료','서류합격','면접예정','최종합격','불합격'],so=[...S.jobs];
-let sm=sts.map(s=>{const c=S.jobs.filter(j=>j.status===s).length;return c?`<span class="stb" style="background:${SC[s]}18;color:${SC[s]}">${s} ${c}</span>`:''}).join('');
-let cd=!so.length?'<div class="em">등록된 입사지원 내역이 없어요</div>':`<div id="jobList">${so.map(j=>`<div class="jc" style="border-left-color:${SC[j.status]}" data-jdrag="${j.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:center;gap:8px"><div class="dh" data-jdh="${j.id}">☰</div><div><div style="font-size:15px;font-weight:600">${e(j.company)}</div>${j.position?`<div style="font-size:12px;color:var(--sub);margin-top:2px">${e(j.position)}</div>`:''}</div></div><span class="stb" style="background:${SC[j.status]}18;color:${SC[j.status]}">${j.status}</span></div><div class="jd">${j.deadline?`<span>마감 ${j.deadline}</span>`:''}${j.applyDate?`<span>지원 ${j.applyDate}</span>`:''}${j.examDate?`<span>시험 ${j.examDate}</span>`:''}${j.resultDate?`<span>발표 ${j.resultDate}</span>`:''}${j.interviewDate?`<span>면접 ${j.interviewDate}</span>`:''}</div>${j.notes?`<div class="jn">${e(j.notes)}</div>`:''}${rCFs(j.id)}<div class="ja"><button class="be" data-ej="${j.id}">수정</button><button class="bd" data-dj="${j.id}">삭제</button></div></div>`).join('')}</div>`;
-return`<div class="sh"><h2>입사지원 현황</h2><button class="bp" id="ajb" style="padding:8px 14px">+ 추가</button></div><div class="sts">${sm}</div>${cd}`;}
+function rJb(){const stsOrder=['최종합격','면접예정','서류합격','지원완료','준비중','불합격'];
+const activeJF=S.jobFilter||'__all__';
+let sm=`<button class="ccp" style="${activeJF==='__all__'?'background:var(--accent);color:#fff;border-color:var(--accent)':''}" data-jf="__all__">전체 (${S.jobs.length})</button>`;
+sm+=stsOrder.map(s=>{const c=S.jobs.filter(j=>j.status===s).length;if(!c)return'';const ac=activeJF===s;
+return`<button class="ccp" style="${ac?`background:${SC[s]}22;border-color:${SC[s]};color:${SC[s]};font-weight:600`:''}" data-jf="${s}">${s} (${c})</button>`;}).join('');
+
+let cd='';
+if(!S.jobs.length){cd='<div class="em">등록된 입사지원 내역이 없어요</div>';}
+else if(activeJF!=='__all__'){
+// 필터된 그룹만
+const filtered=S.jobs.filter(j=>j.status===activeJF);
+if(!filtered.length)cd=`<div class="em">"${activeJF}" 상태의 지원 내역이 없어요</div>`;
+else cd=`<div id="jobList">${filtered.map(j=>rJCard(j)).join('')}</div>`;
+}else{
+// 전체: 그룹별로 묶어서 표시
+cd='<div id="jobList">';
+stsOrder.forEach(s=>{const group=S.jobs.filter(j=>j.status===s);if(!group.length)return;
+cd+=`<div style="margin-bottom:4px;margin-top:16px;display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:600;color:${SC[s]}">${s}</span><span style="font-size:11px;color:var(--sub)">${group.length}건</span><div style="flex:1;height:1px;background:var(--border)"></div></div>`;
+cd+=group.map(j=>rJCard(j)).join('');});
+cd+='</div>';}
+
+return`<div class="sh"><h2>입사지원 현황</h2><button class="bp" id="ajb" style="padding:8px 14px">+ 추가</button></div><div class="cc2" style="margin-bottom:12px">${sm}</div>${cd}`;}
+
+function rJCard(j){return`<div class="jc" style="border-left-color:${SC[j.status]}" data-jdrag="${j.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:center;gap:8px"><div class="dh" data-jdh="${j.id}">☰</div><div><div style="font-size:15px;font-weight:600">${e(j.company)}</div>${j.position?`<div style="font-size:12px;color:var(--sub);margin-top:2px">${e(j.position)}</div>`:''}</div></div><span class="stb" style="background:${SC[j.status]}18;color:${SC[j.status]}">${j.status}</span></div><div class="jd">${j.deadline?`<span>마감 ${j.deadline}</span>`:''}${j.applyDate?`<span>지원 ${j.applyDate}</span>`:''}${j.examDate?`<span>시험 ${j.examDate}</span>`:''}${j.resultDate?`<span>발표 ${j.resultDate}</span>`:''}${j.interviewDate?`<span>면접 ${j.interviewDate}</span>`:''}</div>${j.notes?`<div class="jn">${e(j.notes)}</div>`:''}${rCFs(j.id)}<div class="ja"><button class="be" data-ej="${j.id}">수정</button><button class="bd" data-dj="${j.id}">삭제</button></div></div>`;}
 function rJM(){const f=S.jf,sts=['준비중','지원완료','서류합격','면접예정','최종합격','불합격'];return`<div class="mo" id="jmo"><div class="mb"><h3>${S.ejid?'수정':'입사지원 추가'}</h3><div class="fg"><label>회사명 *</label><input id="jc" value="${e(f.company)}"></div><div class="fg"><label>포지션</label><input id="jp" value="${e(f.position)}"></div><div class="fg"><label>공고 마감일</label><input type="date" id="jdl" value="${f.deadline}"></div><div class="fg"><label>지원일</label><input type="date" id="jad" value="${f.applyDate}"></div><div class="fg"><label>시험일</label><input type="date" id="jex" value="${f.examDate||''}"></div><div class="fg"><label>서류 발표일</label><input type="date" id="jrd" value="${f.resultDate}"></div><div class="fg"><label>면접일</label><input type="date" id="jid" value="${f.interviewDate}"></div><div class="fg"><label>상태</label><select id="jst">${sts.map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label>메모</label><textarea id="jnn" rows="2">${e(f.notes)}</textarea></div><div class="fg"><label>첨부파일</label>${S.ejid?rFL(S.ejid):''}<label class="fab" data-ff="job" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sjb">저장</button><button class="cn" id="cjb">취소</button></div></div></div>`;}
 
 function rIn(){const fil=S.aCat?S.infos.filter(i=>i.category===S.aCat):S.infos;
@@ -299,6 +319,7 @@ dragId=null;curOver=null;});
 const tii=document.getElementById('tii');if(tii){tii.oninput=()=>{S.tIn=tii.value;};tii.onkeydown=(ev)=>{if(ev.key==='Enter')aTd();};}
 const ab=document.getElementById('ab');if(ab)ab.onclick=aTd;
 const ajb=document.getElementById('ajb');if(ajb)ajb.onclick=()=>{S.jf={company:'',position:'',deadline:'',applyDate:'',examDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''};S.ejid=null;S.pf=[];S.sjf=true;R();};
+document.querySelectorAll('[data-jf]').forEach(b=>b.onclick=()=>{const v=b.dataset.jf;S.jobFilter=(v==='__all__'?null:(S.jobFilter===v?null:v));R();});
 document.querySelectorAll('[data-ej]').forEach(b=>b.onclick=()=>{const j=S.jobs.find(x=>x.id===b.dataset.ej);if(!j)return;S.jf={...j,examDate:j.examDate||''};S.ejid=j.id;S.pf=[];S.sjf=true;R();});
 document.querySelectorAll('[data-dj]').forEach(b=>b.onclick=()=>{S.jobs=S.jobs.filter(j=>j.id!==b.dataset.dj);delete S.files[b.dataset.dj];ps();R();});
 const jmo=document.getElementById('jmo');if(jmo)jmo.onclick=(ev)=>{if(ev.target===jmo){S.sjf=false;S.pf=[];R();}};
