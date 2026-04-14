@@ -143,20 +143,27 @@ a{color:var(--blue);text-decoration:none;}
 .dz{margin-top:20px;padding:16px;border:1px solid var(--danger);border-radius:12px;background:#FFF5F4;}
 .dz h4{font-size:13px;color:var(--danger);margin-bottom:8px;}
 .dz button{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;background:var(--danger);color:#fff;}
-.folder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px;}
-.folder{background:#fff;border-radius:12px;padding:16px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;}
-.folder:active{background:#F9FAFB;}
-.folder-icon{font-size:32px;margin-bottom:6px;}
-.folder-name{font-size:13px;font-weight:600;color:var(--text);word-break:break-all;}
-.folder-count{font-size:11px;color:var(--sub);margin-top:2px;}
+.folder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px;}
+.folder{position:relative;background:#fff;border-radius:0 8px 8px 8px;padding:20px 14px 14px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;margin-top:12px;}
+.folder:active{background:#F9FAFB;transform:scale(.98);}
+.folder::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#fff;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;}
+.folder::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:2px;background:#fff;}
+.folder-name{font-size:13px;font-weight:600;color:var(--text);word-break:break-all;margin-top:2px;}
+.folder-count{font-size:11px;color:var(--sub);margin-top:4px;}
 .folder-actions{display:flex;gap:6px;justify-content:center;margin-top:6px;}
 .folder-actions button{font-size:11px;padding:2px 6px;border-radius:4px;}
 .folder-back{display:flex;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;color:var(--accent);font-size:14px;font-weight:500;}
 .folder-back:active{opacity:.7;}
-.folder-add{background:#fff;border-radius:12px;padding:16px;border:2px dashed var(--border);cursor:pointer;text-align:center;}
-.folder-add:active{background:#F9FAFB;}
-.folder-add .folder-icon{opacity:.4;}
+.folder-add{position:relative;background:#FAFBFC;border-radius:0 8px 8px 8px;padding:20px 14px 14px;border:2px dashed var(--border);cursor:pointer;text-align:center;margin-top:12px;}
+.folder-add:active{background:#F0F2F4;}
+.folder-add::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#FAFBFC;border:2px dashed var(--border);border-bottom:none;border-radius:8px 8px 0 0;}
+.folder-add::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:3px;background:#FAFBFC;}
 .folder-add .folder-name{color:var(--sub);font-weight:400;}
+.folder-add-icon{font-size:24px;color:var(--border);margin-bottom:4px;}
+.color-palette{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
+.color-dot{width:24px;height:24px;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.color-dot:active{transform:scale(.9);}
+.color-dot.sel{border-color:var(--text);box-shadow:0 0 0 2px #fff inset;}
 </style>
 </head>
 <body>
@@ -169,6 +176,16 @@ function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function gPw(){return localStorage.getItem(K.pw)||'1234';}
 function sPw(p){localStorage.setItem(K.pw,p);}
 
+// 카테고리 색상 팔레트
+const FCOLORS=['#4A8DB7','#2D8B4E','#E67E22','#8B7BB5','#D96B5A','#F1C40F','#E91E63','#00BCD4','#795548','#607D8B','#9C27B0','#FF9800'];
+// cats 마이그레이션: 문자열 배열 → 객체 배열
+function migrateCats(raw){if(!raw||!raw.length)return[{name:'채용정보',color:'#4A8DB7'},{name:'개발',color:'#2D8B4E'},{name:'자격증',color:'#E67E22'},{name:'기타',color:'#607D8B'}];
+if(typeof raw[0]==='string')return raw.map((n,i)=>({name:n,color:FCOLORS[i%FCOLORS.length]}));return raw;}
+function catName(i){return S.cats[i]?S.cats[i].name:'';}
+function catColor(i){return S.cats[i]?S.cats[i].color:'#607D8B';}
+function catByName(n){return S.cats.find(c=>c.name===n);}
+function catNames(){return S.cats.map(c=>c.name);}
+
 // ── IndexedDB for files ──
 const DB_NAME='bw-db',DB_VER=1,DB_STORE='files';
 function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE);};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}
@@ -176,7 +193,7 @@ async function idbSave(files){try{const db=await openDB();const tx=db.transactio
 async function idbLoad(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readonly');const req=tx.objectStore(DB_STORE).get('allFiles');return new Promise((res)=>{req.onsuccess=()=>res(req.result||{});req.onerror=()=>res({});});}catch{return {};}}
 async function idbClear(){try{const db=await openDB();const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).clear();}catch{}}
 
-let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:ld(K.c,['채용정보','개발','자격증','기타']),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null};
+let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:migrateCats(ld(K.c,null)),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null,editCatColor:null,newCatColor:null};
 function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
@@ -243,7 +260,7 @@ ${cd}`;}
 // 폴더 목록
 let folders='<div class="folder-grid">';
 stsOrder.forEach(s=>{const cnt=S.jobs.filter(j=>j.status===s).length;
-folders+=`<div class="folder" data-jf="${s}"><div class="folder-icon">📁</div><div class="folder-name" style="color:${SC[s]}">${s}</div><div class="folder-count">${cnt}건</div></div>`;});
+folders+=`<div class="folder" data-jf="${s}" style="background:${SC[s]}10;border-color:${SC[s]}40"><div class="folder-name" style="color:${SC[s]}">${s}</div><div class="folder-count">${cnt}건</div></div>`;});
 folders+='</div>';
 
 return`<div class="sh"><h2>입사지원 현황</h2><button class="bp" id="ajb" style="padding:8px 14px">+ 추가</button></div>
@@ -257,34 +274,41 @@ function rIn(){
 // 폴더 열린 상태
 if(S.aCat){
 const fil=S.infos.filter(i=>i.category===S.aCat);
-const ci=S.cats.indexOf(S.aCat);
+const catObj=catByName(S.aCat);
+const cc=catObj?catObj.color:'#607D8B';
 let cd=!fil.length?`<div class="em">"${S.aCat}" 폴더가 비어있어요</div>`:
 `<div id="infoList">${[...fil].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">☰</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;
 return`<div class="sh"><h2>아카이브</h2><button class="bp" id="aib" style="padding:8px 14px">+ 추가</button></div>
 <div class="folder-back" data-cf="__all__">← 전체 폴더</div>
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+<div style="width:14px;height:14px;border-radius:7px;background:${cc};flex-shrink:0"></div>
 <span style="font-size:15px;font-weight:600">${e(S.aCat)}</span><span style="font-size:12px;color:var(--sub)">${fil.length}건</span>
-<button class="be" data-ec="${e(S.aCat)}" style="font-size:11px">✏️ 이름변경</button>
-<button class="bd" data-dc="${e(S.aCat)}" style="font-size:11px">삭제</button></div>${cd}`;}
+<button class="be" data-ec="${e(S.aCat)}" style="font-size:11px">✏️ 이름</button>
+<button class="be" data-ecc="${e(S.aCat)}" style="font-size:11px">🎨 색상</button>
+<button class="bd" data-dc="${e(S.aCat)}" style="font-size:11px">삭제</button></div>
+${S.editCatColor===S.aCat?`<div class="color-palette" style="margin-bottom:12px">${FCOLORS.map(cl=>`<div class="color-dot ${cc===cl?'sel':''}" style="background:${cl}" data-setcc="${cl}"></div>`).join('')}</div>`:''}
+${cd}`;}
 
 // 폴더 목록
 let folders='<div class="folder-grid" id="catFolderList">';
-S.cats.forEach((c,i)=>{const n=S.infos.filter(x=>x.category===c).length;
-folders+=`<div class="folder" data-cf="${e(c)}" data-catdrag="${e(c)}" draggable="true"><div class="folder-icon" style="position:relative">📁</div><div class="folder-name">${e(c)}</div><div class="folder-count">${n}건</div></div>`;});
+S.cats.forEach((c,i)=>{const n=S.infos.filter(x=>x.category===c.name).length;
+folders+=`<div class="folder" data-cf="${e(c.name)}" data-catdrag="${e(c.name)}" draggable="true" style="background:${c.color}15;border-color:${c.color}40"><div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건</div></div>`;});
+folders+='<div style="position:relative;margin-top:12px">';
 // 미분류
-const uncatCount=S.infos.filter(x=>!x.category||!S.cats.includes(x.category)).length;
-if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__"><div class="folder-icon">📂</div><div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;
+const uncatCount=S.infos.filter(x=>!x.category||!catNames().includes(x.category)).length;
+if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__" style="background:#F5F5F5;border-color:#ddd"><div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;
 // 추가 버튼
 if(S.sac){
-folders+=`<div class="folder-add"><div class="aci" style="justify-content:center;flex-wrap:wrap"><input id="nci" placeholder="폴더명" value="${e(S.nci)}" style="width:80px;text-align:center"><button class="bp" style="padding:4px 8px;font-size:11px" id="scb">추가</button><button style="padding:4px 8px;font-size:11px;color:var(--sub)" id="ccb">취소</button></div></div>`;
+folders+=`<div class="folder-add"><div class="aci" style="justify-content:center;flex-wrap:wrap"><input id="nci" placeholder="폴더명" value="${e(S.nci)}" style="width:80px;text-align:center"><button class="bp" style="padding:4px 8px;font-size:11px" id="scb">추가</button><button style="padding:4px 8px;font-size:11px;color:var(--sub)" id="ccb">취소</button></div>
+<div class="color-palette" style="margin-top:8px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-ncc="${cl}"></div>`).join('')}</div></div>`;
 }else{
-folders+=`<div class="folder-add" id="sacb"><div class="folder-icon">➕</div><div class="folder-name">새 폴더</div></div>`;}
-folders+='</div>';
+folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;}
+folders+='</div></div>';
 
 return`<div class="sh"><h2>아카이브</h2><button class="bp" id="aib" style="padding:8px 14px">+ 추가</button></div>
 <div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.infos.length}건</div>
 ${folders}`;}
-function rIM(){const f=S.inf;return`<div class="mo" id="imo"><div class="mb"><h3>${S.eiid?'수정':'정보 추가'}</h3><div class="fg"><label>제목 *</label><input id="iit" value="${e(f.title)}"></div><div class="fg"><label>카테고리</label><select id="iic">${S.cats.map(c=>`<option value="${c}" ${f.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="fg"><label>내용</label><textarea id="iico" rows="4">${e(f.content)}</textarea></div><div class="fg"><label>URL</label><input id="iiu" placeholder="https://" value="${e(f.url)}"></div><div class="fg"><label>태그 (쉼표로 구분)</label><input id="iig" placeholder="예: 채용, 공기업" value="${e(f.tags)}"></div><div class="fg"><label>첨부파일</label>${S.eiid?rFL(S.eiid):''}<label class="fab" data-ff="info" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sib">저장</button><button class="cn" id="cib">취소</button></div></div></div>`;}
+function rIM(){const f=S.inf;return`<div class="mo" id="imo"><div class="mb"><h3>${S.eiid?'수정':'정보 추가'}</h3><div class="fg"><label>제목 *</label><input id="iit" value="${e(f.title)}"></div><div class="fg"><label>카테고리</label><select id="iic">${catNames().map(c=>`<option value="${c}" ${f.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="fg"><label>내용</label><textarea id="iico" rows="4">${e(f.content)}</textarea></div><div class="fg"><label>URL</label><input id="iiu" placeholder="https://" value="${e(f.url)}"></div><div class="fg"><label>태그 (쉼표로 구분)</label><input id="iig" placeholder="예: 채용, 공기업" value="${e(f.tags)}"></div><div class="fg"><label>첨부파일</label>${S.eiid?rFL(S.eiid):''}<label class="fab" data-ff="info" style="margin-top:6px">📎 파일 추가</label>${rPFs()}</div><div class="fb"><button class="sv" id="sib">저장</button><button class="cn" id="cib">취소</button></div></div></div>`;}
 
 function rCl(){const y=S.cy,m=S.cm,fd=new Date(y,m,1).getDay(),dm=new Date(y,m+1,0).getDate(),td=new Date(),ms=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 let cl='';for(let i=0;i<fd;i++)cl+=`<div class="ccl" style="cursor:default"></div>`;
@@ -363,12 +387,15 @@ document.querySelectorAll('[data-dj]').forEach(b=>b.onclick=()=>{S.jobs=S.jobs.f
 const jmo=document.getElementById('jmo');if(jmo)jmo.onclick=(ev)=>{if(ev.target===jmo){S.sjf=false;S.pf=[];R();}};
 const sjb=document.getElementById('sjb');if(sjb)sjb.onclick=sJb;
 const cjb=document.getElementById('cjb');if(cjb)cjb.onclick=()=>{S.sjf=false;S.pf=[];R();};
-const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{S.inf={title:'',content:'',category:S.aCat||S.cats[0]||'',url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;R();};
+const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{S.inf={title:'',content:'',category:S.aCat||catNames()[0]||'',url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;R();};
 document.querySelectorAll('[data-ei]').forEach(b=>b.onclick=()=>{const inf=S.infos.find(x=>x.id===b.dataset.ei);if(!inf)return;S.inf={...inf};S.eiid=inf.id;S.pf=[];S.sif=true;R();});
 document.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{S.infos=S.infos.filter(x=>x.id!==b.dataset.di);delete S.files[b.dataset.di];ps();R();});
 document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{const v=b.dataset.cf;S.aCat=(v==='__all__'?null:v==='__uncat__'?'__uncat__':v);R();});
-document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();if(confirm(`"${b.dataset.dc}" 삭제?`)){S.cats=S.cats.filter(c=>c!==b.dataset.dc);if(S.aCat===b.dataset.dc)S.aCat=null;ps();R();}});
-document.querySelectorAll('[data-ec]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const old=b.dataset.ec;const nv=prompt('카테고리 이름 수정',old);if(nv!==null&&nv.trim()&&nv.trim()!==old){const nn=nv.trim();if(S.cats.includes(nn)){alert('이미 존재하는 카테고리예요');return;}S.cats=S.cats.map(c=>c===old?nn:c);S.infos=S.infos.map(i=>i.category===old?{...i,category:nn}:i);if(S.aCat===old)S.aCat=nn;ps();R();}});
+document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const nm=b.dataset.dc;if(confirm(`"${nm}" 삭제?`)){S.cats=S.cats.filter(c=>c.name!==nm);if(S.aCat===nm)S.aCat=null;ps();R();}});
+document.querySelectorAll('[data-ec]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const old=b.dataset.ec;const nv=prompt('카테고리 이름 수정',old);if(nv!==null&&nv.trim()&&nv.trim()!==old){const nn=nv.trim();if(catNames().includes(nn)){alert('이미 존재하는 카테고리예요');return;}S.cats=S.cats.map(c=>c.name===old?{...c,name:nn}:c);S.infos=S.infos.map(i=>i.category===old?{...i,category:nn}:i);if(S.aCat===old)S.aCat=nn;ps();R();}});
+document.querySelectorAll('[data-ecc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();S.editCatColor=S.editCatColor===b.dataset.ecc?null:b.dataset.ecc;R();});
+document.querySelectorAll('[data-setcc]').forEach(b=>b.onclick=()=>{const cl=b.dataset.setcc;S.cats=S.cats.map(c=>c.name===S.editCatColor?{...c,color:cl}:c);S.editCatColor=null;ps();R();});
+document.querySelectorAll('[data-ncc]').forEach(b=>b.onclick=()=>{S.newCatColor=b.dataset.ncc;R();});
 const sacb=document.getElementById('sacb');if(sacb)sacb.onclick=()=>{S.sac=true;R();setTimeout(()=>{const el=document.getElementById('nci');if(el)el.focus();},50);};
 const scb=document.getElementById('scb');if(scb)scb.onclick=sCt;
 const ccb=document.getElementById('ccb');if(ccb)ccb.onclick=()=>{S.sac=false;S.nci='';R();};
@@ -389,8 +416,8 @@ el.addEventListener('dragend',()=>{el.classList.remove('dragging');list.querySel
 el.addEventListener('dragover',ev=>{ev.preventDefault();list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));if(el.dataset.catdrag!==dragId)el.classList.add('drag-over');});
 el.addEventListener('dragleave',()=>{el.classList.remove('drag-over');});
 el.addEventListener('drop',ev=>{ev.preventDefault();el.classList.remove('drag-over');const toId=el.dataset.catdrag;if(!dragId||dragId===toId)return;
-const fi=S.cats.indexOf(dragId),ti2=S.cats.indexOf(toId);
-if(fi>=0&&ti2>=0){S.cats.splice(fi,1);S.cats.splice(ti2,0,dragId);ps();R();}});
+const fi=S.cats.findIndex(c=>c.name===dragId),ti2=S.cats.findIndex(c=>c.name===toId);
+if(fi>=0&&ti2>=0){const item=S.cats.splice(fi,1)[0];S.cats.splice(ti2,0,item);ps();R();}});
 // Touch
 let touchY=0,clone=null,curOver=null;
 el.addEventListener('touchstart',ev2=>{
@@ -402,7 +429,7 @@ el.addEventListener('touchmove',ev2=>{ev2.preventDefault();if(!clone)return;cons
 list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
 const target=document.elementFromPoint(ev2.touches[0].clientX,ty);if(target){const row=target.closest('[data-catdrag]');if(row&&row.dataset.catdrag!==dragId){row.classList.add('drag-over');curOver=row.dataset.catdrag;}else curOver=null;}},{passive:false});
 el.addEventListener('touchend',()=>{if(clone){clone.remove();clone=null;}el.classList.remove('dragging');list.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
-if(curOver&&dragId&&curOver!==dragId){const fi=S.cats.indexOf(dragId),ti2=S.cats.indexOf(curOver);if(fi>=0&&ti2>=0){S.cats.splice(fi,1);S.cats.splice(ti2,0,dragId);ps();R();}}dragId=null;curOver=null;});
+if(curOver&&dragId&&curOver!==dragId){const fi=S.cats.findIndex(c=>c.name===dragId),ti2=S.cats.findIndex(c=>c.name===curOver);if(fi>=0&&ti2>=0){const item=S.cats.splice(fi,1)[0];S.cats.splice(ti2,0,item);ps();R();}}dragId=null;curOver=null;});
 });})();
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
@@ -426,7 +453,8 @@ if(iit)S.inf={title:iit.value,category:iic.value,content:iico.value,url:iiu.valu
 function aTd(){if(!S.tIn.trim()&&!S.pf.length)return;const id=uid();S.todos.push({id,text:S.tIn.trim()||'(첨부파일)',done:false,date:S.selDate,priority:false});if(S.pf.length){S.files[id]=S.pf.slice();S.pf=[];S.ft=null;}S.tIn='';ps();R();setTimeout(()=>{const el=document.getElementById('tii');if(el)el.focus();},50);}
 function sJb(){const f={company:document.getElementById('jc').value,position:document.getElementById('jp').value,deadline:document.getElementById('jdl').value,applyDate:document.getElementById('jad').value,examDate:document.getElementById('jex').value,resultDate:document.getElementById('jrd').value,interviewDate:document.getElementById('jid').value,status:document.getElementById('jst').value,notes:document.getElementById('jnn').value};if(!f.company.trim())return;let id;if(S.ejid){S.jobs=S.jobs.map(j=>j.id===S.ejid?{...f,id:S.ejid}:j);id=S.ejid;}else{id=uid();S.jobs.push({...f,id});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sjf=false;S.ejid=null;ps();R();}
 function sIn(){const f={title:document.getElementById('iit').value,category:document.getElementById('iic').value,content:document.getElementById('iico').value,url:document.getElementById('iiu').value,tags:document.getElementById('iig').value};if(!f.title.trim())return;let id;if(S.eiid){S.infos=S.infos.map(i=>i.id===S.eiid?{...f,id:S.eiid,createdAt:i.createdAt}:i);id=S.eiid;}else{id=uid();S.infos.push({...f,id,createdAt:new Date().toISOString()});}if(S.pf.length){if(!S.files[id])S.files[id]=[];S.files[id].push(...S.pf);S.pf=[];}S.sif=false;S.eiid=null;ps();R();}
-function sCt(){if(!S.nci.trim()||S.cats.includes(S.nci.trim()))return;S.cats.push(S.nci.trim());S.nci='';S.sac=false;ps();R();}
+function sCt(){if(!S.nci.trim()||catNames().includes(S.nci.trim()))return;
+S.cats.push({name:S.nci.trim(),color:S.newCatColor||FCOLORS[S.cats.length%FCOLORS.length]});S.nci='';S.sac=false;S.newCatColor=null;ps();R();}
 
 function initDrag(listId,dragAttr,handleAttr,arr,arrKey){
 const list=document.getElementById(listId);if(!list)return;
