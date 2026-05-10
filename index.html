@@ -361,6 +361,50 @@ a{color:var(--blue);text-decoration:none;}
 .tx-type-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px;}
 .tx-type-pick button{padding:8px 0;font-size:11px;border-radius:8px;background:var(--al);color:var(--sub);border:1px solid transparent;}
 .tx-type-pick button.sel{background:var(--text);color:#fff;border-color:var(--text);font-weight:600;}
+/* ── 홈 대시보드 ── */
+.home-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;}
+.home-card:active{background:#FAFBFC;border-color:var(--sub);}
+.home-card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.home-card-h h3{font-size:13px;font-weight:600;color:var(--text);display:inline-flex;align-items:center;gap:6px;}
+.home-card-h h3 svg{color:var(--sub);}
+.home-card-meta{font-size:11px;color:var(--sub);}
+.home-empty{font-size:12px;color:var(--sub);text-align:center;padding:8px 0;}
+/* 오늘 할 일 */
+.home-todo-list{display:flex;flex-direction:column;gap:5px;}
+.home-todo-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);padding:2px 0;}
+.home-todo-gtd{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--al);flex-shrink:0;}
+.home-todo-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+/* 마감 임박 */
+.home-urgent-list{display:flex;flex-direction:column;gap:5px;}
+.home-urgent-item{display:flex;align-items:center;gap:8px;font-size:12px;}
+.home-urgent-dot{width:6px;height:6px;border-radius:3px;flex-shrink:0;}
+.home-urgent-day{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--al);color:var(--sub);min-width:42px;text-align:center;flex-shrink:0;}
+.home-urgent-day.today{background:#FEEAEA;color:var(--danger);}
+.home-urgent-day.tomorrow{background:#FFF6E0;color:#CB912F;}
+.home-urgent-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text);}
+/* 활성 프로젝트 */
+.home-prj-list{display:flex;flex-direction:column;gap:10px;}
+.home-prj-line{display:flex;align-items:center;gap:6px;}
+.home-prj-pri{font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;flex-shrink:0;}
+.home-prj-pri.pri-P0{background:#FEEAEA;color:var(--danger);}
+.home-prj-pri.pri-P1{background:#FBF3DB;color:#CB912F;}
+.home-prj-pri.pri-P2{background:var(--al);color:var(--sub);}
+.home-prj-pri.pri-P3{background:#F5F5F4;color:var(--sub);}
+.home-prj-name{font-size:13px;color:var(--text);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.home-prj-cat{font-size:10px;font-weight:500;flex-shrink:0;}
+/* 다가오는 일정 */
+.home-upcoming-list{display:flex;flex-direction:column;gap:5px;}
+.home-upcoming-item{display:flex;align-items:center;gap:6px;font-size:12px;}
+.home-upcoming-date{font-size:10px;color:var(--sub);min-width:48px;flex-shrink:0;}
+.home-upcoming-dot{width:6px;height:6px;border-radius:3px;flex-shrink:0;}
+.home-upcoming-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text);}
+/* GOAL */
+.home-goal-list{display:flex;flex-direction:column;gap:10px;}
+.home-goal-line{display:flex;align-items:center;gap:6px;}
+.home-goal-name{font-size:13px;color:var(--text);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dday{font-size:10px;padding:1px 6px;border-radius:8px;flex-shrink:0;background:var(--al);color:var(--sub);}
+.dday.over{background:#FEEAEA;color:var(--danger);}
+.dday.soon{background:#FFF6E0;color:#CB912F;}
 /* ── GOAL ── */
 .gl-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;}
 .gl-card:active{background:#FAFBFC;}
@@ -422,7 +466,12 @@ file:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline
 file_text:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
 file_image:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="9" cy="13" r="1.5"/><polyline points="20 17 16 13 8 21"/>',
 file_chart:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="18" x2="9" y2="13"/><line x1="13" y1="18" x2="13" y2="14"/><line x1="17" y1="18" x2="17" y2="11"/>',
-drag:'<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>'
+drag:'<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>',
+clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+calendar:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+wallet:'<path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>',
+trending:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+check_circle:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
 };
 function ic(name,size){const sz=size||16;const path=ICONS[name];if(!path)return'';return`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0">${path}</svg>`;}
 
@@ -601,7 +650,7 @@ async function idbClear(){try{const db=await openDB();const tx=db.transaction(DB
 // ── 할 일 마이그레이션 (GTD, 시간대, 집중도 기본값 채우기)
 function migrateTodos(raw){if(!raw)return[];return raw.map(t=>({id:t.id||uid(),text:t.text||'',done:!!t.done,date:t.date||'',priority:!!t.priority,gtd:t.gtd||'next',timeOfDay:t.timeOfDay||[],focus:t.focus||''}));}
 
-let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:(()=>{const t=sessionStorage.getItem('bw-tab');return(t==='jobs'?'projects':t)||'todo';})(),todos:migrateTodos(ld(K.t,[])),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:migrateCats(ld(K.c,null)),pcats:migratePCats(ld(K.pc,null)),projects:migrateProjects(ld(K.p,null)),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null,editCatColor:null,newCatColor:null,
+let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:(()=>{const t=sessionStorage.getItem('bw-tab');return(t==='jobs'?'projects':t)||'home';})(),todos:migrateTodos(ld(K.t,[])),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:migrateCats(ld(K.c,null)),pcats:migratePCats(ld(K.pc,null)),projects:migrateProjects(ld(K.p,null)),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null,editCatColor:null,newCatColor:null,
 gtdFilter:'all',  // GTD 필터 상태 (all/now/next/wait/hold)
 todoEditId:null,  // 할 일 편집 모달 (id가 들어있으면 모달 열림)
 // ── 프로젝트 관련 상태
@@ -680,6 +729,7 @@ if(S.locked){a.innerHTML=rLk();bLk();return;}
 const n=new Date();
 a.innerHTML=`<div class="topbar"><h1>Brainy Workplace</h1><div class="right"><span class="ds">${n.getFullYear()}.${n.getMonth()+1}.${n.getDate()} ${DY[n.getDay()]}</span><button class="lo-btn" id="lo">로그아웃</button></div></div>
 <div class="mw"><main class="main">
+<div class="sec ${S.tab==='home'?'active':''}">${rHome()}</div>
 <div class="sec ${S.tab==='todo'?'active':''}">${rTd()}</div>
 <div class="sec ${S.tab==='info'?'active':''}">${rIn()}</div>
 <div class="sec ${S.tab==='projects'?'active':''}">${rPr()}</div>
@@ -695,7 +745,7 @@ return`<div class="lock-screen"><div class="lock-icon">${ic('lock',40)}</div><h1
 <div class="lock-error">${S.pinErr?'비밀번호가 틀렸어요':''}</div></div>`;}
 function bLk(){document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const v=b.dataset.p;if(v==='del'){S.pin=S.pin.slice(0,-1);S.pinErr=false;R();return;}if(S.pin.length>=10)return;S.pinErr=false;S.pin+=v;if(S.pin.length>=4&&S.pin===gPw()){S.locked=false;S.pin='';sessionStorage.setItem('bw-auth','1');R();}else if(S.pin.length>=gPw().length&&S.pin!==gPw()){S.pinErr=true;R();setTimeout(()=>{S.pin='';S.pinErr=false;R();},700);}else R();});}
 
-function rBt(){const ts=[{id:'todo',l:'할 일',s:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'},{id:'calendar',l:'캘린더',s:'<path d="M8 2v4M16 2v4M3 10h18"/><path d="M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>'},{id:'projects',l:'프로젝트',s:'<path d="M2 7h20v13a1 1 0 01-1 1H3a1 1 0 01-1-1V7z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><path d="M2 12h20"/>'},{id:'info',l:'아카이브',s:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h14v14H6.5"/>'},{id:'money',l:'자산',s:'<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'},{id:'settings',l:'설정',s:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>'}];
+function rBt(){const ts=[{id:'home',l:'홈',s:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'},{id:'todo',l:'할 일',s:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'},{id:'calendar',l:'캘린더',s:'<path d="M8 2v4M16 2v4M3 10h18"/><path d="M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>'},{id:'projects',l:'프로젝트',s:'<path d="M2 7h20v13a1 1 0 01-1 1H3a1 1 0 01-1-1V7z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><path d="M2 12h20"/>'},{id:'info',l:'아카이브',s:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h14v14H6.5"/>'},{id:'money',l:'자산',s:'<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'},{id:'settings',l:'설정',s:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>'}];
 return`<nav class="bottom-tab">${ts.map(t=>`<button class="${S.tab===t.id?'active':''}" data-tab="${t.id}"><svg viewBox="0 0 24 24" fill="none" stroke="${S.tab===t.id?'var(--accent)':'var(--sub)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.s}</svg>${t.l}</button>`).join('')}</nav>`;}
 
 function rCFs(p){const f=gF(p);if(!f.length)return'';return`<div class="cf">${f.map((x,i)=>{return iI(x.name)?`<div class="cft" data-pvp="${p}" data-pvi="${i}"><img src="${x.data}"></div>`:`<div class="cft" data-pvp="${p}" data-pvi="${i}">${fI(x.name)}</div>`;}).join('')}</div>`;}
@@ -740,6 +790,141 @@ ${[1,2,3,4,5].map(n=>`<button class="${dl.condition===n?'on':''}" data-dlc="${da
 <textarea class="dl-reflect" data-dlr="${date}" placeholder="오늘 어땠어요? 잘된 점/아쉬운 점/내일 할 것">${e(dl.reflection||'')}</textarea>
 </div>
 </div></div>`;}
+
+// ── 홈 대시보드 ──
+function rHome(){
+const today=new Date();
+const todayStr=fD(today);
+const tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);
+const in3days=new Date(today);in3days.setDate(today.getDate()+3);
+const in7days=new Date(today);in7days.setDate(today.getDate()+7);
+const dayHour=today.getHours();
+const greeting=dayHour<6?'좋은 새벽이에요':dayHour<12?'좋은 아침이에요':dayHour<18?'좋은 오후예요':'좋은 저녁이에요';
+
+// 1. 오늘 할 일 (미완료, GTD 즉시실행 우선)
+const todayTodos=S.todos.filter(t=>t.date===todayStr&&!t.done);
+const gtdOrder={'now':0,'next':1,'wait':2,'later':3};
+const sortedTodos=[...todayTodos].sort((a,b)=>{const g=(gtdOrder[a.gtd]||9)-(gtdOrder[b.gtd]||9);if(g)return g;return(b.priority?1:0)-(a.priority?1:0);});
+const allTodayCnt=S.todos.filter(t=>t.date===todayStr).length;
+const doneTodayCnt=S.todos.filter(t=>t.date===todayStr&&t.done).length;
+
+// 2. 마감 임박 — 향후 3일 내
+const urgentItems=[];
+for(let i=0;i<=3;i++){const d=new Date(today);d.setDate(today.getDate()+i);const ds=fD(d);
+gEv(ds).forEach(ev=>{
+// 할 일 항목은 별도 표시하므로 제외
+if(ev.type==='todo')return;
+urgentItems.push({...ev,date:ds,daysAway:i});
+});}
+
+// 3. 활성 프로젝트 TOP 3 (P0 → P1 → P2 → P3 순)
+const priOrder={'P0':0,'P1':1,'P2':2,'P3':3};
+const activeProjects=S.projects.filter(p=>p.status==='active').sort((a,b)=>(priOrder[a.priority]||9)-(priOrder[b.priority]||9)).slice(0,3);
+
+// 4. 다가오는 일정 — 7일 내 (오늘 제외)
+const upcoming=[];
+for(let i=1;i<=7;i++){const d=new Date(today);d.setDate(today.getDate()+i);const ds=fD(d);
+gEv(ds).forEach(ev=>{if(ev.type==='todo')return;upcoming.push({...ev,date:ds});});}
+
+// 5. 자산 요약
+const totalAssetVal=totalAssets();
+const ym=todayStr.substring(0,7);
+const monthSum=monthInOut(ym);
+const netSaving=monthSum.income-monthSum.expense;
+
+// 6. 활성 GOAL (가장 가까운 목표일)
+const activeGoals=(S.goals||[]).filter(g=>g.status==='active').sort((a,b)=>{const ao=priOrder[a.priority]||9;const bo=priOrder[b.priority]||9;if(ao!==bo)return ao-bo;return(a.targetDate||'9999').localeCompare(b.targetDate||'9999');}).slice(0,2);
+
+// === 렌더 ===
+return`<div style="padding-top:6px">
+
+<div style="margin-bottom:18px">
+<div style="font-size:11px;color:var(--sub);margin-bottom:2px">${greeting}</div>
+<div style="font-size:20px;font-weight:700;color:var(--text)">${today.getMonth()+1}월 ${today.getDate()}일 ${DY[today.getDay()]}요일</div>
+</div>
+
+<div class="home-card" data-hometab="todo">
+<div class="home-card-h"><h3>${ic('check_circle',14)} 오늘 할 일</h3><span class="home-card-meta">${doneTodayCnt}/${allTodayCnt}</span></div>
+${todayTodos.length?`
+<div class="home-todo-list">
+${sortedTodos.slice(0,5).map(t=>`<div class="home-todo-item">
+${t.priority?'<span style="color:var(--text);margin-right:2px">★</span>':''}
+${t.gtd&&t.gtd!=='next'?`<span class="home-todo-gtd" style="color:${gtdColor(t.gtd)}">${gtdLabel(t.gtd)}</span>`:''}
+<span class="home-todo-text">${e(t.text)}</span>
+</div>`).join('')}
+${todayTodos.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${todayTodos.length-5}개 더</div>`:''}
+</div>`:`<div class="home-empty">오늘 할 일이 없어요. 잘하셨어요!</div>`}
+</div>
+
+${urgentItems.length?`<div class="home-card" data-hometab="calendar">
+<div class="home-card-h"><h3>${ic('clock',14)} 마감 임박</h3><span class="home-card-meta">3일 이내 ${urgentItems.length}건</span></div>
+<div class="home-urgent-list">
+${urgentItems.slice(0,4).map(u=>{const dLabel=u.daysAway===0?'오늘':u.daysAway===1?'내일':u.daysAway+'일 후';return`<div class="home-urgent-item">
+<div class="home-urgent-dot" style="background:${u.color}"></div>
+<span class="home-urgent-day ${u.daysAway===0?'today':u.daysAway===1?'tomorrow':''}">${dLabel}</span>
+<span class="home-urgent-text">${e(u.label)}</span>
+</div>`;}).join('')}
+${urgentItems.length>4?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${urgentItems.length-4}개 더</div>`:''}
+</div>
+</div>`:''}
+
+${activeProjects.length?`<div class="home-card" data-hometab="projects">
+<div class="home-card-h"><h3>${ic('target',14)} 활성 프로젝트</h3><span class="home-card-meta">${S.projects.filter(p=>p.status==='active').length}개</span></div>
+<div class="home-prj-list">
+${activeProjects.map(p=>{const pct=prjProgress(p).pct;const pc=pcatById(p.pcat);const ccolor=pc?pc.color:'#787774';return`<div class="home-prj-item">
+<div class="home-prj-line">
+<span class="home-prj-pri pri-${p.priority}">${p.priority}</span>
+<span class="home-prj-name">${e(p.name)}</span>
+<span class="home-prj-cat" style="color:${ccolor}">${pc?e(pc.name):''}</span>
+</div>
+<div class="pb" style="height:4px;margin-top:4px"><div class="pf" style="width:${pct}%;background:${ccolor}"></div></div>
+</div>`;}).join('')}
+</div>
+</div>`:''}
+
+${upcoming.length?`<div class="home-card" data-hometab="calendar">
+<div class="home-card-h"><h3>${ic('calendar',14)} 다가오는 일정</h3><span class="home-card-meta">7일 이내 ${upcoming.length}건</span></div>
+<div class="home-upcoming-list">
+${upcoming.slice(0,5).map(u=>{const d=pD(u.date);return`<div class="home-upcoming-item">
+<span class="home-upcoming-date">${d?(d.getMonth()+1)+'/'+d.getDate()+' ('+DY[d.getDay()]+')':''}</span>
+<div class="home-upcoming-dot" style="background:${u.color}"></div>
+<span class="home-upcoming-text">${e(u.label)}</span>
+</div>`;}).join('')}
+${upcoming.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${upcoming.length-5}개 더</div>`:''}
+</div>
+</div>`:''}
+
+${activeGoals.length?`<div class="home-card" data-homeact="goals">
+<div class="home-card-h"><h3>${ic('wallet',14)} 저축 목표</h3><span class="home-card-meta">활성 ${(S.goals||[]).filter(g=>g.status==='active').length}개</span></div>
+<div class="home-goal-list">
+${activeGoals.map(g=>{const{saved,target,pct}=goalProgress(g);const dd=g.targetDate?dDayText(g.targetDate):null;return`<div class="home-goal-item">
+<div class="home-goal-line">
+<span class="home-prj-pri pri-${g.priority}">${g.priority}</span>
+<span class="home-goal-name">${e(g.name)}</span>
+${dd?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px"><span>${fmtKRWShort(saved)} / ${fmtKRWShort(target)}</span><span>${pct}%</span></div>
+<div class="pb" style="height:4px;margin-top:3px"><div class="pf" style="width:${pct}%;background:var(--text)"></div></div>
+</div>`;}).join('')}
+</div>
+</div>`:''}
+
+${S.accounts.length?`<div class="home-card" data-hometab="money">
+<div class="home-card-h"><h3>${ic('chart',14)} 자산 요약</h3><span class="home-card-meta">${ym.replace('-','년 ')}월</span></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;margin-bottom:8px">
+<span style="font-size:11px;color:var(--sub)">총 자산</span>
+<span style="font-size:18px;font-weight:700;color:var(--text)">${fmtKRW(totalAssetVal)}</span>
+</div>
+<div style="display:flex;gap:8px">
+<div style="flex:1;background:#F1F8F4;border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--sub)">수입</div><div style="font-size:13px;font-weight:600;color:#0F7B6C">+${fmtKRWShort(monthSum.income)}</div></div>
+<div style="flex:1;background:#FDF1F1;border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--sub)">지출</div><div style="font-size:13px;font-weight:600;color:#E03E3E">-${fmtKRWShort(monthSum.expense)}</div></div>
+<div style="flex:1;background:${netSaving>=0?'#F1F8F4':'#FDF1F1'};border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--sub)">순저축</div><div style="font-size:13px;font-weight:600;color:${netSaving>=0?'#0F7B6C':'#E03E3E'}">${netSaving>=0?'+':''}${fmtKRWShort(netSaving)}</div></div>
+</div>
+</div>`:''}
+
+${!todayTodos.length&&!urgentItems.length&&!activeProjects.length&&!upcoming.length&&!activeGoals.length&&!S.accounts.length?`<div class="tx-empty" style="padding:60px 24px;font-size:13px">시작해볼까요?<br><br>각 탭에서 데이터를 추가하면<br>여기에 요약이 나타납니다</div>`:''}
+
+</div>`;}
 
 function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date());
 
@@ -1242,7 +1427,7 @@ ${catRows.map(([cat,v])=>{const pct=Math.round(v/totalExp*100);return`<div style
 ${kindRows.length?`<div class="mo-section-h"><h3>자산 분포</h3></div>
 ${kindRows.map(([k,v])=>{const pct=Math.round(v/totalPos*100);const c=assetKindColor(k);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:${c};font-weight:500">${assetKindLabel(k)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;}).join('')}`:''}
 
-${uncat.length?`<div style="background:#FFF8E1;border:1px solid #F5C242;border-radius:10px;padding:10px 14px;margin:14px 0;font-size:12px;color:var(--text)"><strong>⚠ 미분류 거래 ${uncat.length}건</strong> — 거래 탭에서 정리해주세요</div>`:''}
+${uncat.length?`<div style="background:#FFF8E1;border:1px solid #F5C242;border-radius:10px;padding:10px 14px;margin:14px 0;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px"><span style="color:#CB912F;display:inline-flex">${ic('warn',14)}</span><span><strong>미분류 거래 ${uncat.length}건</strong> — 거래 탭에서 정리해주세요</span></div>`:''}
 
 ${(()=>{const activeGoals=(S.goals||[]).filter(g=>g.status==='active').sort((a,b)=>{const o={'P0':0,'P1':1,'P2':2};return(o[a.priority]||9)-(o[b.priority]||9);}).slice(0,3);if(!activeGoals.length)return'';return`<div class="mo-section-h"><h3>저축 목표</h3><button class="be" data-mov="goals">전체 보기</button></div>${activeGoals.map(g=>renderGoalCard(g)).join('')}`;})()}
 
@@ -1430,7 +1615,7 @@ ${dd&&g.status==='active'?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}
 </div>
 <div class="gl-card-prog"><div class="pb"><div class="pf" style="width:${pct}%;background:${g.status==='achieved'?'#0F7B6C':'var(--text)'}"></div></div></div>
 ${g.status==='active'&&need!=null&&remain>0?`<div class="gl-card-need"><span>월 필요 저축액${ml?` (${ml}개월 남음)`:''}</span><span class="v">${fmtKRWShort(need)}</span></div>`:''}
-${g.status==='active'&&remain===0&&target>0?`<div class="gl-card-need" style="color:#0F7B6C"><span>🎉 목표 달성! 상태를 "달성"으로 변경하세요</span></div>`:''}
+${g.status==='active'&&remain===0&&target>0?`<div class="gl-card-need" style="color:#0F7B6C;display:flex;align-items:center;gap:6px"><span style="display:inline-flex">${ic('check_circle',14)}</span><span>목표 달성! 상태를 "달성"으로 변경하세요</span></div>`:''}
 </div>`;}
 
 function rMoGoalDetail(){
@@ -1678,6 +1863,23 @@ S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 // navStack 비움 + 가드 이력만 유지 (replace로 교체)
+window.navStack&&(window.navStack.length=0);
+R();});
+// 홈 대시보드 카드 → 탭 점프
+document.querySelectorAll('[data-hometab]').forEach(b=>b.onclick=()=>{
+const tab=b.dataset.hometab;
+S.tab=tab;sessionStorage.setItem('bw-tab',tab);
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
+if(tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
+window.navStack&&(window.navStack.length=0);
+R();});
+// 홈 카드 → 자산 탭의 GOAL 서브탭으로 이동
+document.querySelectorAll('[data-homeact="goals"]').forEach(b=>b.onclick=()=>{
+S.tab='money';sessionStorage.setItem('bw-tab','money');
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
+S.moView='goals';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
 R();});
 const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{
