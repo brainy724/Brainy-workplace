@@ -178,20 +178,16 @@ a{color:var(--blue);text-decoration:none;}
 .dz h4{font-size:13px;color:var(--danger);margin-bottom:8px;}
 .dz button{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;background:var(--danger);color:#fff;}
 .folder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px;}
-.folder{position:relative;background:#fff;border-radius:0 8px 8px 8px;padding:24px 14px 18px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;margin-top:12px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.folder{position:relative;background:#fff;border-radius:12px;padding:14px 12px 14px;border:1px solid var(--border);cursor:pointer;transition:all .15s;text-align:center;min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
 .folder:active{background:#F9FAFB;transform:scale(.98);}
-.folder::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:inherit;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;pointer-events:none;}
-.folder::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:2px;background:inherit;pointer-events:none;}
 .folder-name{font-size:14px;font-weight:600;color:var(--text);word-break:break-all;}
-.folder-count{font-size:12px;color:var(--sub);margin-top:4px;}
-.folder-back{display:flex;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;color:var(--accent);font-size:14px;font-weight:500;}
+.folder-count{font-size:11px;color:var(--sub);}
+.folder-back{display:flex;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;color:var(--text);font-size:14px;font-weight:500;}
 .folder-back:active{opacity:.7;}
-.folder-add{position:relative;background:#FAFBFC;border-radius:0 8px 8px 8px;padding:24px 14px 18px;border:2px dashed var(--border);cursor:pointer;text-align:center;margin-top:12px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.folder-add{position:relative;background:#FAFBFC;border-radius:12px;padding:14px 12px;border:2px dashed var(--border);cursor:pointer;text-align:center;min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
 .folder-add:active{background:#F0F2F4;}
-.folder-add::before{content:'';position:absolute;top:-12px;left:0;width:45%;height:12px;background:#FAFBFC;border:2px dashed var(--border);border-bottom:none;border-radius:8px 8px 0 0;pointer-events:none;}
-.folder-add::after{content:'';position:absolute;top:-1px;left:0;width:45%;height:3px;background:#FAFBFC;pointer-events:none;}
 .folder-add .folder-name{color:var(--sub);font-weight:400;}
-.folder-add-icon{font-size:24px;color:var(--border);margin-bottom:4px;}
+.folder-add-icon{font-size:24px;color:var(--border);}
 .color-palette{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
 .color-dot{width:24px;height:24px;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .color-dot:active{transform:scale(.9);}
@@ -283,13 +279,32 @@ a{color:var(--blue);text-decoration:none;}
 .retro-summary .total{font-size:28px;font-weight:700;color:var(--text);}
 .retro-summary .label{font-size:11px;color:var(--sub);margin-top:4px;}
 .retro-summary .guide{font-size:12px;color:var(--text);margin-top:8px;}
+/* ── 데일리 로그 ── */
+.dl-box{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+.dl-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--al);}
+.dl-head:active{background:#E8E7E4;}
+.dl-head .dl-ttl{font-size:13px;font-weight:600;color:var(--text);display:inline-flex;align-items:center;gap:6px;}
+.dl-head .dl-toggle{font-size:12px;color:var(--sub);}
+.dl-head .dl-summary{font-size:11px;color:var(--sub);}
+.dl-body{padding:14px;border-top:1px solid var(--border);}
+.dl-section{margin-bottom:14px;}
+.dl-section:last-child{margin-bottom:0;}
+.dl-section-label{font-size:11px;color:var(--sub);font-weight:600;margin-bottom:6px;}
+.dl-targets{display:flex;flex-direction:column;gap:6px;}
+.dl-target-row{display:flex;align-items:center;gap:6px;}
+.dl-target-row .dl-num{width:16px;height:16px;border-radius:8px;background:var(--text);color:#fff;font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dl-target-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;}
+.dl-cond{display:flex;gap:6px;}
+.dl-cond button{flex:1;padding:8px 0;border-radius:8px;font-size:12px;background:var(--al);color:var(--sub);border:1px solid var(--border);}
+.dl-cond button.on{background:var(--text);color:#fff;border-color:var(--text);font-weight:600;}
+.dl-reflect{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;font-family:inherit;resize:vertical;min-height:60px;}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <input type="file" id="gfi" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.hwp" style="display:none">
 <script>
-const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc'};
+const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc',dl:'bw-dl'};
 
 // ── 단색 SVG 아이콘 헬퍼 ──
 // 모든 아이콘은 currentColor 스트로크 사용. 호출: ic('lock', 16)
@@ -320,6 +335,25 @@ file_chart:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><po
 drag:'<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>'
 };
 function ic(name,size){const sz=size||16;const path=ICONS[name];if(!path)return'';return`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0">${path}</svg>`;}
+
+// ── 컬러 폴더 아이콘 (3D 스타일) ──
+// color: 폴더 본체 색상 (카테고리 색상 사용 가능)
+function folderIcon(size,color){const sz=size||20;const c=color||'#F5C242';
+// 어두운 톤 = 본체 색을 살짝 어둡게
+return`<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" style="vertical-align:middle;flex-shrink:0;display:inline-block">
+<defs><filter id="fsh${sz}" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="0.6"/></filter></defs>
+<!-- 그림자 -->
+<ellipse cx="24" cy="42" rx="14" ry="1.5" fill="rgba(0,0,0,0.08)"/>
+<!-- 폴더 뒷면(탭) -->
+<path d="M6 14 Q6 11 9 11 L18 11 L21 14 L39 14 Q42 14 42 17 L42 36 Q42 39 39 39 L9 39 Q6 39 6 36 Z" fill="${c}" opacity="0.85"/>
+<!-- 흰 종이 -->
+<rect x="13" y="16" width="22" height="18" rx="1.5" fill="#FFFFFF" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>
+<rect x="15" y="19" width="14" height="1.2" rx="0.6" fill="${c}" opacity="0.25"/>
+<rect x="15" y="22" width="18" height="1.2" rx="0.6" fill="${c}" opacity="0.18"/>
+<rect x="15" y="25" width="12" height="1.2" rx="0.6" fill="${c}" opacity="0.18"/>
+<!-- 폴더 앞면 -->
+<path d="M6 18 Q6 16 8 16 L40 16 Q42 16 42 18 L40.5 36 Q40 39 37 39 L11 39 Q8 39 7.5 36 Z" fill="${c}"/>
+</svg>`;}
 function ld(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function gPw(){return localStorage.getItem(K.pw)||'1234';}
@@ -419,9 +453,12 @@ msAssignTaskId:null, // 할 일에 마일스톤 배정 모달 (할 일 id)
 sretro:false,        // 회고 모달 (보관 시 또는 보기 시)
 retroForm:{goal:3,efficiency:3,growth:3,worth:3,nextAction:3,text:''},
 retroPrjId:null,     // 회고 대상 프로젝트 id
-retroNext:''         // 회고 저장 후 이동할 상태 ('archived' 등)
+retroNext:'',        // 회고 저장 후 이동할 상태 ('archived' 등)
+// ── 데일리 로그
+daily:ld(K.dl,{}),   // {date: {targets:[], condition:0, reflection:''}}
+dlOpen:false         // 데일리 로그 펼침 상태 (일별 뷰 상단)
 };
-function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);idbSave(S.files);}
+function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
 function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -466,6 +503,44 @@ function rFL(p){const f=gF(p);if(!f.length)return'';return`<div class="fl">${f.m
 function rPFs(){if(!S.pf.length)return'';return`<div class="fl">${S.pf.map((x,i)=>`<div class="fi"><div class="ft ${iI(x.name)?'ftcl':''}" data-pfpv="${i}" style="cursor:pointer">${iI(x.name)?`<img src="${x.data}">`:fI(x.name)}</div><span class="fn2">${e(x.name)}</span><span class="fdl" data-rpf="${i}">×</span></div>`).join('')}</div>`;}
 function rPv(){const p=S.prev;if(p.type==='image')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><img src="${p.data}"></div>`;if(p.type==='pdf')return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><iframe src="${p.data}"></iframe></div>`;return`<div class="pov" id="pvo"><span class="pcl" id="pvc">×</span><div style="background:#fff;padding:32px;border-radius:12px;text-align:center"><div style="font-size:48px;margin-bottom:12px">${fI(p.name)}</div><div style="font-size:14px;margin-bottom:16px">${e(p.name)}</div><a href="${p.data}" download="${e(p.name)}" class="bp" style="text-decoration:none;display:inline-block">다운로드</a></div></div>`;}
 
+// ── 데일리 로그 ──
+function getDaily(date){const d=S.daily[date];return d||{targets:['','',''],condition:0,reflection:''};}
+function setDaily(date,patch){const cur=getDaily(date);const next={...cur,...patch};
+// 빈 데이터면 키 자체를 제거 (저장 공간 아끼기)
+const empty=(!next.targets||next.targets.every(t=>!t||!t.trim()))&&!next.condition&&!next.reflection;
+if(empty){const c={...S.daily};delete c[date];S.daily=c;}else{S.daily={...S.daily,[date]:next};}ps();}
+function rDailyLog(date){const dl=getDaily(date);
+const filledCnt=(dl.targets||[]).filter(t=>t&&t.trim()).length;
+const summary=[];if(filledCnt)summary.push(`목표 ${filledCnt}개`);if(dl.condition)summary.push(`컨디션 ${dl.condition}/5`);if(dl.reflection&&dl.reflection.trim())summary.push('회고 작성됨');
+const summaryText=summary.length?summary.join(' · '):'아직 기록 없음';
+const isToday=date===fD(new Date());
+const headLabel=isToday?'오늘의 데일리 로그':'데일리 로그';
+
+if(!S.dlOpen){return`<div class="dl-box"><div class="dl-head" id="dlToggle"><span class="dl-ttl">${ic('edit',14)} ${headLabel}</span><span class="dl-summary">${summaryText} <span class="dl-toggle">▼</span></span></div></div>`;}
+
+// 펼친 상태
+const targets=(dl.targets||['','','']).slice(0,3);while(targets.length<3)targets.push('');
+return`<div class="dl-box">
+<div class="dl-head" id="dlToggle"><span class="dl-ttl">${ic('edit',14)} ${headLabel}</span><span class="dl-toggle">▲</span></div>
+<div class="dl-body">
+<div class="dl-section">
+<div class="dl-section-label">오늘의 목표 (1~3개)</div>
+<div class="dl-targets">
+${targets.map((t,i)=>`<div class="dl-target-row"><div class="dl-num">${i+1}</div><input data-dlt="${date}:${i}" placeholder="목표 ${i+1}" value="${e(t)}"></div>`).join('')}
+</div>
+</div>
+<div class="dl-section">
+<div class="dl-section-label">컨디션</div>
+<div class="dl-cond">
+${[1,2,3,4,5].map(n=>`<button class="${dl.condition===n?'on':''}" data-dlc="${date}:${n}">${n}</button>`).join('')}
+</div>
+</div>
+<div class="dl-section">
+<div class="dl-section-label">한 줄 회고 (저녁용, 선택)</div>
+<textarea class="dl-reflect" data-dlr="${date}" placeholder="오늘 어땠어요? 잘된 점/아쉬운 점/내일 할 것">${e(dl.reflection||'')}</textarea>
+</div>
+</div></div>`;}
+
 function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date());
 
 if(S.tv==='week'){
@@ -508,7 +583,7 @@ const gtdChip=t.gtd&&t.gtd!=='next'?`<span class="tt-bdg gtd" style="color:${gtd
 const focChip=t.focus?`<span class="tt-bdg foc" style="color:${focusColor(t.focus)}">${focusLabel(t.focus)}</span>`:'';
 const meta=(gtdChip||focChip||todChips)?`<div class="tt-meta">${gtdChip}${focChip}${todChips}</div>`:'';
 return`<div class="ti ${t.done?'done':''} ${t.priority?'pri':''}" data-dragid="${t.id}" draggable="true"><div class="dh" data-drag="${t.id}">${ic('drag',14)}</div><div class="cb ${t.done?'chk':''}" data-tg="${t.id}"></div><div style="flex:1;min-width:0"><span class="tt ${t.done?'dn':''}" data-edt="${t.id}">${t.priority?`<span style="color:var(--danger);margin-right:4px;display:inline-flex;vertical-align:-2px">${ic('star_fill',12)}</span>`:''}${e(t.text)}</span>${meta}${rCFs(t.id)}</div><button class="sb2 ${t.priority?'son':'sof'}" data-sr="${t.id}">${ic('star',16)}</button><button class="db2" data-dt="${t.id}">×</button></div>`;}).join('')}</div>`;
-return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${pg}<div class="gtd-tabs"><button class="${S.gtdFilter==='all'?'active':''}" data-gf="all">전체 (${dtAll.length})</button>${GTD_LIST.map(g=>{const cnt=dtAll.filter(t=>(t.gtd||'next')===g.k).length;return`<button class="${S.gtdFilter===g.k?'active':''}" data-gf="${g.k}">${g.l} (${cnt})</button>`;}).join('')}</div><div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">${ic('attach',14)} 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
+return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${pg}${rDailyLog(S.selDate)}<div class="gtd-tabs"><button class="${S.gtdFilter==='all'?'active':''}" data-gf="all">전체 (${dtAll.length})</button>${GTD_LIST.map(g=>{const cnt=dtAll.filter(t=>(t.gtd||'next')===g.k).length;return`<button class="${S.gtdFilter===g.k?'active':''}" data-gf="${g.k}">${g.l} (${cnt})</button>`;}).join('')}</div><div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">${ic('attach',14)} 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
 
 function rJb(){const stsOrder=['최종합격','면접예정','서류합격','지원완료','준비중','불합격'];
 const activeJF=S.jobFilter;
@@ -526,7 +601,7 @@ ${cd}`;}
 // 폴더 목록
 let folders='<div class="folder-grid">';
 stsOrder.forEach(s=>{const cnt=S.jobs.filter(j=>j.status===s).length;
-folders+=`<div class="folder" data-jf="${s}" style="background:${SC[s]}10;border-color:${SC[s]}40"><div class="folder-name" style="color:${SC[s]}">${s}</div><div class="folder-count">${cnt}건</div></div>`;});
+folders+=`<div class="folder" data-jf="${s}" style="background:${SC[s]}10;border-color:${SC[s]}40">${folderIcon(40,SC[s])}<div class="folder-name" style="color:${SC[s]}">${s}</div><div class="folder-count">${cnt}건</div></div>`;});
 folders+='</div>';
 
 return`<div class="sh"><h2>입사지원 현황</h2><button class="bp" id="ajb" style="padding:8px 14px">+ 추가</button></div>
@@ -546,7 +621,7 @@ const items=curId?infosInCat(curId):[];
 let bread='';
 if(curId){
 const path=catPath(curId);
-bread=`<div class="folder-back"><span data-cf="__root__" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">${ic('folder',14)} 전체</span>`;
+bread=`<div class="folder-back"><span data-cf="__root__" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">${folderIcon(18,'#F5C242')} 전체</span>`;
 path.forEach((p,i)=>{bread+=` <span style="color:var(--sub);margin:0 2px">/</span> <span data-cf="${p.id}" style="cursor:pointer;${i===path.length-1?'font-weight:600;color:var(--text)':'color:var(--accent)'}">${e(p.name)}</span>`;});
 bread+=`</div>`;}
 
@@ -568,10 +643,10 @@ let folders='';
 if(children.length||!curId){
 folders='<div class="folder-grid" id="catFolderList">';
 children.forEach(c=>{const n=infosInCat(c.id).length;const subCount=catChildren(c.id).length;
-folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable="true" style="background:${c.color}15;border-color:${c.color}40"><div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건${subCount?` · ${subCount} <span style="display:inline-flex;vertical-align:middle">${ic('folder',11)}</span>`:''}</div></div>`;});
+folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable="true" style="background:${c.color}15;border-color:${c.color}40">${folderIcon(40,c.color)}<div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건${subCount?` · 하위 ${subCount}`:''}</div></div>`;});
 // 미분류 (루트만)
 if(!curId){const uncatCount=S.infos.filter(x=>!x.category||!catById(x.category)).length;
-if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__" style="background:#F5F5F5;border-color:#ddd"><div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;}
+if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__" style="background:#F5F5F5;border-color:#ddd">${folderIcon(40,'#9B9A97')}<div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;}
 // 새 폴더 버튼
 if(S.sac){
 folders+=`<div class="folder-add"><div class="aci" style="justify-content:center;flex-wrap:wrap"><input id="nci" placeholder="폴더명" value="${e(S.nci)}" style="width:80px;text-align:center"><button class="bp" style="padding:4px 8px;font-size:11px" id="scb">추가</button><button style="padding:4px 8px;font-size:11px;color:var(--sub)" id="ccb">취소</button></div>
@@ -653,13 +728,14 @@ const folders=S.pcats.map(c=>{
 const inCat=S.projects.filter(p=>p.pcat===c.id);
 const activeCnt=inCat.filter(p=>p.status==='active').length;
 return`<div class="folder" data-prjcf="${c.id}" style="background:${c.color}15;border-color:${c.color}40">
+${folderIcon(40,c.color)}
 <div class="folder-name" style="color:${c.color}">${e(c.name)}</div>
 <div class="folder-count">${activeCnt}개${inCat.length>activeCnt?` · 전체 ${inCat.length}`:''}</div>
 </div>`;}).join('');
 
 // 카테고리 관리 영역
 const pcatMgr=`<div class="pcat-mgr">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="margin:0;display:inline-flex;align-items:center;gap:6px">${ic('folder',14)} 카테고리 편집</h4><button class="be" id="tpcat" style="font-size:11px">${S.spcat?'닫기':'열기'}</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="margin:0;display:inline-flex;align-items:center;gap:6px">${folderIcon(18,'#F5C242')} 카테고리 편집</h4><button class="be" id="tpcat" style="font-size:11px">${S.spcat?'닫기':'열기'}</button></div>
 ${S.spcat?`<div style="font-size:11px;color:var(--sub);margin-bottom:8px">칩을 탭하면 이름 수정 / 색상 변경, ×로 삭제</div>
 <div class="pcat-list" style="margin-bottom:10px">${S.pcats.map(c=>`<div class="pcat-chip" style="background:${c.color}22;color:${c.color}" data-epcc="${c.id}">${e(c.name)}<span class="x" data-dpc="${c.id}">×</span></div>`).join('')}</div>
 ${S.editPCatColor?`<div style="font-size:11px;color:var(--sub);margin-bottom:6px">"${e((pcatById(S.editPCatColor)||{}).name||'')}" 색상 선택:</div><div class="color-palette" style="margin-bottom:10px">${FCOLORS.map(cl=>`<div class="color-dot" style="background:${cl}" data-setpcc="${cl}"></div>`).join('')}</div>`:''}
@@ -731,7 +807,7 @@ let retroBox='';
 if(p.retro){const r=p.retro;const total=r.total||(r.goal+r.efficiency+r.growth+r.worth+r.nextAction);
 const guide=total>=21?'확장: 다음 시즌/단계로':total>=16?'유지: 같은 방식으로 계속':total>=11?'개선: 일부 보완 후 재개':'종료: 미련 없이 마무리';
 retroBox=`<div class="prj-info-box" style="background:var(--al)">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:600">📝 회고 (${r.date||''})</div><button class="be" data-retroedit="${p.id}">수정</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px">${ic('edit',13)} 회고 (${r.date||''})</div><button class="be" data-retroedit="${p.id}">수정</button></div>
 <div style="font-size:11px;color:var(--sub);line-height:1.8">목표 달성 ${r.goal} · 시간 효율 ${r.efficiency} · 학습 성장 ${r.growth} · 다시 할 가치 ${r.worth} · 다음 액션 명확성 ${r.nextAction}</div>
 <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:11px;color:var(--sub)">총점</span><span style="font-size:20px;font-weight:700">${total}<span style="font-size:11px;color:var(--sub)">/25</span></span></div>
 <div style="font-size:11px;color:var(--text);margin-top:4px;text-align:right">${guide}</div>
@@ -852,7 +928,7 @@ function rSt(){return`<div class="sh"><h2>설정</h2></div><div class="stc"><h3 
 <input type="file" id="bkImp" accept=".json" style="display:none">
 ${S.bkMsg?`<div class="smg ${S.bkMsg.o?'ok':'er'}">${S.bkMsg.t}</div>`:''}
 <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">• 내보내기: JSON 파일로 다운로드됩니다<br>• 불러오기: 기존 데이터를 덮어씁니다<br>• 첨부파일은 IndexedDB에 저장 (용량 걱정 없음)</div></div>
-<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('chart',16)} 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>프로젝트: ${S.projects.length}개<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4 style="display:flex;align-items:center;gap:6px">${ic('warn',14)} 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
+<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('chart',16)} 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>프로젝트: ${S.projects.length}개<br>데일리 로그: ${Object.keys(S.daily||{}).length}일<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4 style="display:flex;align-items:center;gap:6px">${ic('warn',14)} 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
 
 function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);R();});
@@ -870,6 +946,11 @@ saveModalState();
 document.getElementById('gfi').click();});
 document.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const d=pD(S.selDate);d.setDate(d.getDate()+parseInt(b.dataset.dn));S.selDate=fD(d);R();});
 document.querySelectorAll('[data-vt]').forEach(b=>b.onclick=()=>{S.tv=b.dataset.vt;R();});
+// 데일리 로그
+const dlToggle=document.getElementById('dlToggle');if(dlToggle)dlToggle.onclick=()=>{S.dlOpen=!S.dlOpen;R();};
+document.querySelectorAll('[data-dlt]').forEach(inp=>{inp.onchange=()=>{const[date,idx]=inp.dataset.dlt.split(':');const i=parseInt(idx);const cur=getDaily(date);const targets=[...(cur.targets||['','',''])];while(targets.length<3)targets.push('');targets[i]=inp.value;setDaily(date,{targets});};});
+document.querySelectorAll('[data-dlc]').forEach(b=>b.onclick=()=>{const[date,n]=b.dataset.dlc.split(':');const cur=getDaily(date);const v=parseInt(n);setDaily(date,{condition:cur.condition===v?0:v});R();});
+document.querySelectorAll('[data-dlr]').forEach(ta=>{ta.onchange=()=>{const date=ta.dataset.dlr;setDaily(date,{reflection:ta.value});};});
 document.querySelectorAll('[data-wd]').forEach(b=>b.onclick=()=>{S.selDate=b.dataset.wd;S.tv='day';R();});
 document.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{S.todos=S.todos.map(t=>t.id===b.dataset.tg?{...t,done:!t.done}:t);ps();R();});
 document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{S.todos=S.todos.map(t=>t.id===b.dataset.sr?{...t,priority:!t.priority}:t);ps();R();});
@@ -1076,9 +1157,9 @@ const npci=document.getElementById('npci');if(npci){npci.oninput=()=>{S.npci=npc
 const apcb=document.getElementById('apcb');if(apcb)apcb.onclick=aPCat;
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
 const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
-const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:2,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
+const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:3,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
 const bkImpLabel=document.getElementById('bkImpLabel');if(bkImpLabel)bkImpLabel.onclick=()=>{document.getElementById('bkImp').click();};
-const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
+const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
 // 렌더링 전에 현재 모달 폼 값 저장
