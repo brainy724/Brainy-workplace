@@ -189,6 +189,8 @@ a{color:var(--blue);text-decoration:none;}
 .folder-back{display:flex;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;color:var(--text);font-size:14px;font-weight:500;}
 .folder-back:active{opacity:.7;}
 .folder-add{position:relative;background:transparent;border:none;padding:10px 4px 8px;cursor:pointer;text-align:center;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;}
+.folder-add-inline{display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;min-height:120px;gap:4px;}
+.folder-add-inline input:focus{outline:none;border-bottom-color:var(--text);}
 .folder-add:active{opacity:.5;}
 .folder-add .folder-name{color:var(--sub);font-weight:400;}
 .folder-add-icon{width:72px;height:72px;border-radius:14px;background:#F5F5F4;color:var(--sub);font-size:36px;display:flex;align-items:center;justify-content:center;font-weight:300;}
@@ -896,7 +898,7 @@ const uncatItems=S.infos.filter(x=>!x.category||!catById(x.category));
 cd=!uncatItems.length?`<div class="em">미분류 항목이 없어요</div>`:
 `<div id="infoList">${[...uncatItems].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">${ic('drag',14)}</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;}
 
-return`<div class="sh"><h2>아카이브</h2><button class="bp" id="aib" style="padding:8px 14px">+ 추가</button></div>
+return`<div class="sh"><h2>아카이브</h2>${curId?`<button class="bp" id="aib" style="padding:8px 14px">+ 추가</button>`:''}</div>
 ${bread}${header}
 <div style="font-size:12px;color:var(--sub);margin-bottom:8px">${!curId?'총 '+S.infos.length+'건':''}</div>
 ${folders}${cd}`;}
@@ -965,23 +967,37 @@ ${folderIcon(72,c.color)}
 <div class="folder-count">${activeCnt}개${inCat.length>activeCnt?` · 전체 ${inCat.length}`:''}</div>
 </div>`;}).join('');
 
-// 카테고리 관리 영역
-const pcatMgr=`<div class="pcat-mgr">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="margin:0;display:inline-flex;align-items:center;gap:6px">${folderIcon(18,'#F5C242')} 카테고리 편집</h4><button class="be" id="tpcat" style="font-size:11px">${S.spcat?'닫기':'열기'}</button></div>
-${S.spcat?`<div style="font-size:11px;color:var(--sub);margin-bottom:8px">칩을 탭하면 이름 수정 / 색상 변경, ×로 삭제</div>
-<div class="pcat-list" style="margin-bottom:10px">${S.pcats.map(c=>`<div class="pcat-chip" style="background:${c.color}22;color:${c.color}" data-epcc="${c.id}">${e(c.name)}<span class="x" data-dpc="${c.id}">×</span></div>`).join('')}</div>
-${S.editPCatColor?`<div style="font-size:11px;color:var(--sub);margin-bottom:6px">"${e((pcatById(S.editPCatColor)||{}).name||'')}" 색상 선택:</div><div class="color-palette" style="margin-bottom:10px">${FCOLORS.map(cl=>`<div class="color-dot" style="background:${cl}" data-setpcc="${cl}"></div>`).join('')}</div>`:''}
-<div class="aci" style="flex-wrap:wrap"><input id="npci" placeholder="새 카테고리 이름" value="${e(S.npci)}" style="width:140px"><button class="bp" id="apcb" style="padding:5px 10px;font-size:11px">추가</button></div>
-<div class="color-palette" style="margin-top:6px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newPCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-npcc="${cl}"></div>`).join('')}</div>`
-:''}
-</div>`;
+// 카테고리 관리 영역 (제거됨 — 폴더 길게 누르기로 대체)
 
 const totalActive=S.projects.filter(p=>p.status==='active').length;
 
-return`<div class="sh"><h2>프로젝트</h2><button class="bp" id="aprj" style="padding:8px 14px">+ 추가</button></div>
-<div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
-${pcatMgr}
-<div class="folder-grid">${folders}</div>`;}
+// 폴더 그리드: 기존 폴더들 + (편집 중이면 인라인 입력 카드 / 아니면 + 새 폴더 카드)
+const addCard=S.spcat?(()=>{const c=S.newPCatColor||FCOLORS[0];return`<div class="folder folder-add-inline">
+${folderIcon(72,c)}
+<input id="npci" placeholder="폴더 이름" value="${e(S.npci)}" style="width:100%;font-size:11px;text-align:center;border:none;border-bottom:1px solid var(--border);padding:4px 0;margin-top:4px;background:transparent;outline:none">
+<div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:4px;max-width:90px">${FCOLORS.slice(0,8).map(cl=>`<div style="width:14px;height:14px;border-radius:7px;background:${cl};cursor:pointer;border:2px solid ${(S.newPCatColor||FCOLORS[0])===cl?'var(--text)':'transparent'};box-sizing:border-box" data-npcc="${cl}"></div>`).join('')}</div>
+<div style="display:flex;gap:4px;margin-top:4px"><button class="bp" id="apcb" style="padding:3px 8px;font-size:10px">추가</button><button id="cancpc" style="padding:3px 8px;font-size:10px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:6px">취소</button></div>
+</div>`;})():`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
+
+return`<div class="sh"><h2>프로젝트</h2></div>
+<div style="font-size:12px;color:var(--sub);margin-bottom:10px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
+<div class="folder-grid">${folders}${addCard}</div>
+${S.editPCatColor?rPCatActionM():''}`;}
+
+// 폴더 길게 누르기 액션 모달
+function rPCatActionM(){const c=pcatById(S.editPCatColor);if(!c)return'';
+return`<div class="mo" id="pcatActionMo"><div class="mb" style="max-width:340px">
+<h3 style="display:flex;align-items:center;gap:8px">${folderIcon(20,c.color)} ${e(c.name)}</h3>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+<button data-pcact="rename" style="padding:12px;border:1px solid var(--border);border-radius:10px;font-size:13px;text-align:left;display:flex;align-items:center;gap:8px;background:#fff;color:var(--text)">${ic('edit',14)} 이름 변경</button>
+<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff">
+<div style="font-size:13px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">${ic('palette',14)} 색상 변경</div>
+<div class="color-palette">${FCOLORS.map(cl=>`<div class="color-dot ${c.color===cl?'sel':''}" style="background:${cl}" data-pcact="setcolor:${cl}"></div>`).join('')}</div>
+</div>
+<button data-pcact="delete" style="padding:12px;border:1px solid var(--danger);border-radius:10px;font-size:13px;text-align:left;display:flex;align-items:center;gap:8px;background:#fff;color:var(--danger)">${ic('trash',14)} 삭제</button>
+</div>
+<div class="fb" style="margin-top:14px"><button class="cn" id="pcatActionCn" style="flex:1">닫기</button></div>
+</div></div>`;}
 
 // 프로젝트 카드 한 개 렌더 (목록과 폴더 안에서 공통)
 function renderPrjCard(p,pc){const prog=prjProgress(p);const dd=dDayText(p.endDate);
@@ -1658,7 +1674,7 @@ function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
 // 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더)
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 // navStack 비움 + 가드 이력만 유지 (replace로 교체)
@@ -1667,7 +1683,7 @@ R();});
 const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{
 S.locked=true;S.pin='';sessionStorage.removeItem('bw-auth');
 // 깊은 상태 모두 리셋
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;S.moView='home';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
 R();};
@@ -1930,7 +1946,32 @@ isDragging=false;dragId=null;curOver=null;});
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 
 // ── 프로젝트 이벤트 ──
-document.querySelectorAll('[data-prjcf]').forEach(b=>{const enter=()=>{S.prjFolder=b.dataset.prjcf;S.prjFilter='active';navPush(()=>{S.prjFolder=null;});R();};b.onclick=enter;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();enter();},{passive:false});});
+document.querySelectorAll('[data-prjcf]').forEach(b=>{
+const id=b.dataset.prjcf;
+const enter=()=>{S.prjFolder=id;S.prjFilter='active';navPush(()=>{S.prjFolder=null;});R();};
+let pressTimer=null;
+let longFired=false;
+const startPress=()=>{longFired=false;pressTimer=setTimeout(()=>{longFired=true;
+// 길게 누름 → 액션 시트
+S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;});R();
+// 햅틱 (지원 브라우저만)
+if(navigator.vibrate)navigator.vibrate(30);
+},500);};
+const cancelPress=()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}};
+// 마우스
+b.addEventListener('mousedown',startPress);
+b.addEventListener('mouseup',cancelPress);
+b.addEventListener('mouseleave',cancelPress);
+// 터치
+b.addEventListener('touchstart',(ev)=>{startPress();},{passive:true});
+b.addEventListener('touchmove',cancelPress,{passive:true});
+b.addEventListener('touchcancel',cancelPress,{passive:true});
+b.addEventListener('touchend',(ev)=>{cancelPress();if(longFired){if(ev.cancelable)ev.preventDefault();return;}if(ev.cancelable)ev.preventDefault();enter();},{passive:false});
+// click — 길게 누름 발동 후엔 무시
+b.addEventListener('click',(ev)=>{if(longFired){ev.preventDefault();ev.stopPropagation();return;}enter();});
+// 우클릭 (PC에서 액션 시트 열기)
+b.addEventListener('contextmenu',(ev)=>{ev.preventDefault();S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;});R();});
+});
 const prjFolderBack=document.getElementById('prjFolderBack');if(prjFolderBack)prjFolderBack.onclick=()=>{history.back();};
 document.querySelectorAll('[data-prjf]').forEach(b=>b.onclick=()=>{S.prjFilter=b.dataset.prjf;R();});
 document.querySelectorAll('[data-prjopen]').forEach(b=>b.onclick=()=>{S.prjOpen=b.dataset.prjopen;navPush(()=>{S.prjOpen=null;});R();});
@@ -2016,13 +2057,28 @@ dragId=null;curOver=null;});
 });})();
 
 // 프로젝트 카테고리 관리
-const tpcat=document.getElementById('tpcat');if(tpcat)tpcat.onclick=()=>{S.spcat=!S.spcat;S.editPCatColor=null;R();};
-document.querySelectorAll('[data-epcc]').forEach(b=>b.onclick=()=>{const id=b.dataset.epcc;const c=pcatById(id);if(!c)return;const nv=prompt('카테고리 이름 수정',c.name);if(nv!==null&&nv.trim()&&nv.trim()!==c.name){S.pcats=S.pcats.map(x=>x.id===id?{...x,name:nv.trim()}:x);ps();R();}else{S.editPCatColor=S.editPCatColor===id?null:id;R();}});
-document.querySelectorAll('[data-setpcc]').forEach(b=>b.onclick=()=>{S.pcats=S.pcats.map(c=>c.id===S.editPCatColor?{...c,color:b.dataset.setpcc}:c);S.editPCatColor=null;ps();R();});
-document.querySelectorAll('[data-dpc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dpc;if(id==='pc-job'&&S.jobs.length){alert('"취업" 카테고리는 입사지원 데이터가 있어 삭제할 수 없어요. 먼저 입사지원 항목을 모두 삭제하세요.');return;}const used=S.projects.filter(p=>p.pcat===id).length;if(used){alert(`이 카테고리를 사용 중인 프로젝트가 ${used}개 있어요. 먼저 다른 카테고리로 옮기거나 삭제하세요.`);return;}if(S.pcats.length<=1){alert('최소 1개 카테고리는 있어야 해요');return;}if(confirm('카테고리를 삭제할까요?')){S.pcats=S.pcats.filter(c=>c.id!==id);ps();R();}});
+// "+ 새 폴더" 카드 클릭 → 인라인 추가 모드 켜기
+const addPCatBtn=document.getElementById('addPCatBtn');if(addPCatBtn)addPCatBtn.onclick=()=>{S.spcat=true;S.newPCatColor=FCOLORS[0];R();setTimeout(()=>{const el=document.getElementById('npci');if(el)el.focus();},50);};
+// 인라인 추가 모드 — 색상 선택
 document.querySelectorAll('[data-npcc]').forEach(b=>b.onclick=()=>{S.newPCatColor=b.dataset.npcc;R();});
-const npci=document.getElementById('npci');if(npci){npci.oninput=()=>{S.npci=npci.value;};npci.onkeydown=(ev)=>{if(ev.key==='Enter')aPCat();};}
+// 인라인 추가 모드 — 이름 입력
+const npci=document.getElementById('npci');if(npci){npci.oninput=()=>{S.npci=npci.value;};npci.onkeydown=(ev)=>{if(ev.key==='Enter')aPCat();else if(ev.key==='Escape'){S.spcat=false;S.npci='';R();}};}
 const apcb=document.getElementById('apcb');if(apcb)apcb.onclick=aPCat;
+const cancpc=document.getElementById('cancpc');if(cancpc)cancpc.onclick=()=>{S.spcat=false;S.npci='';S.newPCatColor=null;R();};
+
+// 액션 시트 (길게 누르기로 열림)
+const pcatActionMo=document.getElementById('pcatActionMo');if(pcatActionMo)pcatActionMo.onclick=(ev)=>{if(ev.target===pcatActionMo){history.back();}};
+const pcatActionCn=document.getElementById('pcatActionCn');if(pcatActionCn)pcatActionCn.onclick=()=>{history.back();};
+document.querySelectorAll('[data-pcact]').forEach(b=>b.onclick=()=>{const act=b.dataset.pcact;const id=S.editPCatColor;const c=pcatById(id);if(!c)return;
+if(act==='rename'){const nv=prompt('카테고리 이름 수정',c.name);if(nv!==null&&nv.trim()&&nv.trim()!==c.name){S.pcats=S.pcats.map(x=>x.id===id?{...x,name:nv.trim()}:x);ps();}history.back();}
+else if(act.startsWith('setcolor:')){const cl=act.split(':')[1];S.pcats=S.pcats.map(x=>x.id===id?{...x,color:cl}:x);ps();history.back();}
+else if(act==='delete'){
+if(id==='pc-job'&&S.jobs.length){alert('"취업" 카테고리는 입사지원 데이터가 있어 삭제할 수 없어요. 먼저 입사지원 항목을 모두 삭제하세요.');return;}
+const used=S.projects.filter(p=>p.pcat===id).length;
+if(used){alert(`이 카테고리를 사용 중인 프로젝트가 ${used}개 있어요. 먼저 다른 카테고리로 옮기거나 삭제하세요.`);return;}
+if(S.pcats.length<=1){alert('최소 1개 카테고리는 있어야 해요');return;}
+if(confirm(`"${c.name}" 폴더를 삭제할까요?`)){S.pcats=S.pcats.filter(x=>x.id!==id);ps();history.back();}}
+});
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
 const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
 const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:6,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
@@ -2051,7 +2107,7 @@ S.cats.push({id:uid(),name:S.nci.trim(),color:S.newCatColor||FCOLORS[S.cats.leng
 function aPrjT(){if(!S.prjTaskIn.trim())return;const txt=S.prjTaskIn.trim();S.projects=S.projects.map(p=>p.id===S.prjOpen?{...p,tasks:[...(p.tasks||[]),{id:uid(),text:txt,done:false}]}:p);S.prjTaskIn='';ps();R();setTimeout(()=>{const el=document.getElementById('prjTii');if(el)el.focus();},50);}
 
 // 프로젝트 카테고리 추가
-function aPCat(){if(!S.npci.trim())return;S.pcats.push({id:uid(),name:S.npci.trim(),color:S.newPCatColor||FCOLORS[S.pcats.length%FCOLORS.length]});S.npci='';S.newPCatColor=null;ps();R();}
+function aPCat(){if(!S.npci.trim())return;S.pcats.push({id:uid(),name:S.npci.trim(),color:S.newPCatColor||FCOLORS[S.pcats.length%FCOLORS.length]});S.npci='';S.newPCatColor=null;S.spcat=false;ps();R();}
 
 function initDrag(listId,dragAttr,handleAttr,arr,arrKey){
 const list=document.getElementById(listId);if(!list)return;
