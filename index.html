@@ -1097,7 +1097,8 @@ function pcatById(id){return S.pcats.find(c=>c.id===id);}
 //  startDate,endDate,desc,tasks:[{id,text,done}]}
 function migrateProjects(raw){
 if(!raw)return[];
-return raw.map(p=>({id:p.id||uid(),name:p.name||'',pcat:p.pcat||'pc-etc',status:p.status||'active',priority:p.priority||'P2',startDate:p.startDate||'',endDate:p.endDate||'',desc:p.desc||'',tasks:Array.isArray(p.tasks)?p.tasks.map(t=>({id:t.id||uid(),text:t.text||'',done:!!t.done,milestoneId:t.milestoneId||''})):[],milestones:Array.isArray(p.milestones)?p.milestones:[],retro:p.retro||null}));}
+const todayStr=fD(new Date());
+return raw.map(p=>({id:p.id||uid(),name:p.name||'',pcat:p.pcat||'pc-etc',status:p.status||'active',priority:p.priority||'P2',startDate:p.startDate||'',endDate:p.endDate||'',desc:p.desc||'',tasks:Array.isArray(p.tasks)?p.tasks.map(t=>({id:t.id||uid(),text:t.text||'',done:!!t.done,doneAt:t.doneAt||(t.done?todayStr:''),milestoneId:t.milestoneId||''})):[],milestones:Array.isArray(p.milestones)?p.milestones:[],retro:p.retro||null}));}
 // 처음 켰을 때만 시드 데이터 (저장된 데이터가 있으면 건드리지 않음)
 function seedProjects(){return[
 {id:uid(),name:'취업준비',pcat:'pc-job',status:'active',priority:'P0',startDate:'',endDate:'',desc:'자소서·면접·기업 리서치',tasks:[]},
@@ -1437,20 +1438,20 @@ const heatData={};
 Object.entries(dayDone).forEach(([d,n])=>{heatData[d]=Math.min(1,n/maxDone);});
 const pc=pcatById(p.pcat)||{name:'기타',color:'#787774'};
 return{p,pc,heatData,totalCompleted:completed.length,totalTasks:tasks.length};});
-// 데이터 있는 프로젝트만 (해당 연도에 완료한 게 있어야)
-const withData=prjData.filter(d=>d.totalCompleted>0);
-if(!withData.length)return'';
+// 활성 프로젝트가 있으면 항상 표시 (데이터 없어도 빈 그리드)
+const totalAll=prjData.reduce((s,d)=>s+d.totalCompleted,0);
 
 return`<div class="home-card">
 ${rCardEditTools('home','project_heatmaps')}
 <div class="home-card-h">
 <h3>${ic('target',14)} ${yr}년 프로젝트별 활동</h3>
-<span class="home-card-meta">${withData.length}개 프로젝트</span>
+<span class="home-card-meta">${activePrjs.length}개 · ${totalAll}건</span>
 </div>
+${totalAll===0?`<div style="font-size:11px;color:var(--sub);margin:6px 0 10px;padding:8px 10px;background:#F9FAFB;border-radius:6px;line-height:1.5">아직 ${yr}년에 완료한 프로젝트 할 일이 없어요. 프로젝트에서 할 일을 체크하면 여기에 표시돼요.</div>`:''}
 <div style="display:flex;flex-direction:column;gap:14px;margin-top:8px">
-${withData.map(({p,pc,heatData,totalCompleted})=>`<div>
+${prjData.map(({p,pc,heatData,totalCompleted})=>`<div>
 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;font-size:11px">
-<span style="display:inline-flex;align-items:center;gap:5px;font-weight:500;color:var(--text)">
+<span style="display:inline-flex;align-items:center;gap:5px;font-weight:500;color:var(--text);min-width:0">
 <span style="width:8px;height:8px;border-radius:2px;background:${pc.color};flex-shrink:0"></span>
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(p.name)}</span>
 </span>
