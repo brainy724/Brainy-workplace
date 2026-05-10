@@ -329,7 +329,7 @@ a{color:var(--blue);text-decoration:none;}
 .ac-card-head{display:flex;justify-content:space-between;align-items:flex-start;}
 .ac-card-name{font-size:14px;font-weight:600;}
 .ac-card-meta{font-size:11px;color:var(--sub);margin-top:2px;display:flex;gap:6px;align-items:center;}
-.ac-card-bal{font-size:16px;font-weight:700;color:var(--text);}
+.ac-card-bal{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;flex-shrink:0;margin-left:8px;}
 .ac-card-bal.neg{color:var(--danger);}
 .ac-kind-tag{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:500;}
 .tx-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;}
@@ -547,6 +547,47 @@ function fmtAmtInput(n){if(n==null||n==='')return'';const num=parseFloat(n);if(i
 // 콤마 들어간 문자열 → 숫자
 function parseAmt(s){if(!s)return 0;return parseFloat(String(s).replace(/[^\d.-]/g,''))||0;}
 // 입력 중 자동으로 콤마 추가 (input 이벤트에 바인딩)
+function setupAmtInput(el){if(!el)return;
+const reformat=()=>{const cursor=el.selectionStart;const oldLen=el.value.length;
+const num=parseAmt(el.value);el.value=num?num.toLocaleString('ko-KR'):'';
+// 커서 위치 보정 (오른쪽 끝 기준이 아닌 자연스럽게)
+const newLen=el.value.length;const newPos=Math.max(0,cursor+(newLen-oldLen));
+try{el.setSelectionRange(newPos,newPos);}catch{}};
+el.addEventListener('input',reformat);
+// 초기 포매팅
+if(el.value)reformat();}
+
+// ── 차트 헬퍼 (SVG) ──
+// 도넛 차트: data = [[label, value, color], ...]
+function svgDonut(data,size){const total=data.reduce((s,[,v])=>s+v,0);if(!total)return'';
+const sz=size||140,cx=sz/2,cy=sz/2,r=sz*0.4,ir=sz*0.26;
+let acc=0;const paths=[];
+data.forEach(([,v,c])=>{const start=acc/total*Math.PI*2-Math.PI/2;const end=(acc+v)/total*Math.PI*2-Math.PI/2;acc+=v;
+const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
+const x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+const ix1=cx+ir*Math.cos(end),iy1=cy+ir*Math.sin(end);
+const ix2=cx+ir*Math.cos(start),iy2=cy+ir*Math.sin(start);
+const large=(end-start)>Math.PI?1:0;
+paths.push(`<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${ir} ${ir} 0 ${large} 0 ${ix2} ${iy2} Z" fill="${c}"/>`);});
+return`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="display:block">${paths.join('')}</svg>`;}
+
+// 막대 그래프: data = [{label, income, expense}], 너비는 컨테이너 100%
+function svgBars(data,height){if(!data.length)return'';
+const h=height||120,padTop=6,padBot=24,chartH=h-padTop-padBot;
+const maxVal=Math.max(...data.map(d=>Math.max(d.income||0,d.expense||0)),1);
+const w=300;const groupW=w/data.length;const barW=Math.min(groupW*0.32,18);
+let bars='';
+data.forEach((d,i)=>{const cx=groupW*i+groupW/2;
+const incH=(d.income||0)/maxVal*chartH;
+const expH=(d.expense||0)/maxVal*chartH;
+bars+=`<rect x="${cx-barW-1}" y="${padTop+chartH-incH}" width="${barW}" height="${incH}" fill="#0F7B6C" rx="2"/>`;
+bars+=`<rect x="${cx+1}" y="${padTop+chartH-expH}" width="${barW}" height="${expH}" fill="#E03E3E" rx="2"/>`;
+bars+=`<text x="${cx}" y="${h-6}" text-anchor="middle" font-size="10" fill="#787774">${d.label}</text>`;});
+return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${bars}</svg>`;}
+
+// 카테고리별 색상 (도넛에 사용)
+const CAT_COLORS=['#E03E3E','#D9730D','#CB912F','#0F7B6C','#337EA9','#9065B0','#AD1A72','#9F6B53','#787774','#0B6E99','#5A5A5A','#D44C47','#406099','#7B5C8E','#C28A56','#888888','#A0A0A0','#5C5C5C'];
+function catColor(idx){return CAT_COLORS[idx%CAT_COLORS.length];}
 function setupAmtInput(el){if(!el)return;
 const reformat=()=>{const cursor=el.selectionStart;const oldLen=el.value.length;
 const num=parseAmt(el.value);el.value=num?num.toLocaleString('ko-KR'):'';
@@ -1528,12 +1569,45 @@ return`<div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;color:
 </div>`;})()}
 
 ${(()=>{
-// 카테고리별 지출 TOP 5
-const catRows=categoryExpense(monthTxs).slice(0,5);
-if(!catRows.length)return'';
-const totalExp=catRows.reduce((s,[,v])=>s+v,0)||1;
+// 카테고리별 지출 TOP 5 + 도넛 차트
+const catRowsAll=categoryExpense(monthTxs);
+if(!catRowsAll.length)return'';
+const catRows=catRowsAll.slice(0,5);
+const totalExp=catRowsAll.reduce((s,[,v])=>s+v,0)||1;
+// 6위 이하는 '기타'로 합산해서 도넛에 포함
+const donutData=[];
+catRows.forEach(([cat,v],i)=>donutData.push([cat,v,catColor(i)]));
+if(catRowsAll.length>5){const otherSum=catRowsAll.slice(5).reduce((s,[,v])=>s+v,0);donutData.push(['기타',otherSum,'#C4C2BD']);}
 return`<div class="mo-section-h"><h3>이번 달 지출 카테고리</h3></div>
-${catRows.map(([cat,v])=>{const pct=Math.round(v/totalExp*100);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text);font-weight:500">${e(cat)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--text)"></div></div></div>`;}).join('')}`;})()}
+<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+<div style="display:flex;align-items:center;gap:14px">
+<div style="flex-shrink:0">${svgDonut(donutData,120)}</div>
+<div style="flex:1;min-width:0">
+${donutData.map(([cat,v,c])=>{const pct=Math.round(v/totalExp*100);return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px">
+<div style="width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0"></div>
+<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${e(cat)}</span>
+<span style="color:var(--sub);flex-shrink:0">${pct}%</span>
+</div>`;}).join('')}
+<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--sub);display:flex;justify-content:space-between"><span>총 지출</span><span style="font-weight:600;color:var(--text)">${fmtKRW(totalExp)}</span></div>
+</div>
+</div>
+</div>`;})()}
+
+${(()=>{
+// 최근 6개월 수입/지출 추이 막대 그래프
+const today=new Date();
+const months=[];
+for(let i=5;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);const ymKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const sum=monthInOut(ymKey);months.push({label:(d.getMonth()+1)+'월',income:sum.income,expense:sum.expense,ym:ymKey});}
+const hasData=months.some(m=>m.income||m.expense);
+if(!hasData)return'';
+return`<div class="mo-section-h"><h3>최근 6개월 추이</h3></div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 8px;margin-bottom:14px">
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:6px;font-size:10px;color:var(--sub)">
+<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:#0F7B6C;border-radius:2px"></span>수입</span>
+<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:#E03E3E;border-radius:2px"></span>지출</span>
+</div>
+${svgBars(months,110)}
+</div>`;})()}
 
 ${kindRows.length?`<div class="mo-section-h"><h3>자산 분포</h3></div>
 ${kindRows.map(([k,v])=>{const pct=Math.round(v/totalPos*100);const c=assetKindColor(k);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:${c};font-weight:500">${assetKindLabel(k)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;}).join('')}`:''}
@@ -1567,7 +1641,7 @@ html+=`<div class="ac-card ${a.active===false?'inactive':''}" data-acopen="${a.i
 <div class="ac-card-name">${e(a.name)}${a.active===false?' <span style="font-size:10px;color:var(--sub)">(비활성)</span>':''}</div>
 <div class="ac-card-meta"><span>${e(a.bank)}</span><span>·</span><span>${a.currency||'KRW'}</span></div>
 </div>
-<div class="ac-card-bal ${isDebt?'neg':''}">${isDebt?'-':''}${fmtKRWShort(a.balance||0)}</div>
+<div class="ac-card-bal ${isDebt?'neg':''}">${isDebt?'-':''}${fmtKRW(a.balance||0)}</div>
 </div>
 ${a.memo?`<div style="font-size:11px;color:var(--sub);margin-top:6px">${e(a.memo)}</div>`:''}
 </div>`;});});
@@ -1772,7 +1846,7 @@ ${g.memo?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(
 ${!linkedAccs.length?'<div class="tx-empty" style="padding:20px;font-size:11px">연결된 계좌가 없어요. 수정에서 추가하세요</div>':linkedAccs.map(a=>{const c=assetKindColor(a.kind);return`<div class="ac-card" data-acopen="${a.id}" style="border-left-color:${c};margin-bottom:6px">
 <div class="ac-card-head">
 <div style="flex:1"><div class="ac-card-name">${e(a.name)}</div><div class="ac-card-meta"><span>${e(a.bank)}</span><span>·</span><span>${assetKindLabel(a.kind)}</span></div></div>
-<div class="ac-card-bal">${fmtKRWShort(a.balance||0)}</div>
+<div class="ac-card-bal">${fmtKRW(a.balance||0)}</div>
 </div></div>`;}).join('')}
 
 <div style="display:flex;gap:6px;margin-top:14px">
@@ -1993,7 +2067,7 @@ ${s.active&&nd?`<span>·</span><span>다음: ${nd}</span>`:''}
 ${dd&&s.active?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}
 </div>
 </div>
-<div class="ac-card-bal" style="color:${s.type==='income'?'#0F7B6C':'var(--text)'}">${sign}${fmtKRWShort(s.amount)}</div>
+<div class="ac-card-bal" style="color:${s.type==='income'?'#0F7B6C':'var(--text)'}">${sign}${fmtKRW(s.amount)}</div>
 </div>
 ${s.memo?`<div style="font-size:11px;color:var(--sub);margin-top:6px">${e(s.memo)}</div>`:''}
 </div>`;}
