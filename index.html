@@ -313,6 +313,7 @@ async function idbClear(){try{const db=await openDB();const tx=db.transaction(DB
 let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:sessionStorage.getItem('bw-tab')||'todo',todos:ld(K.t,[]),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:migrateCats(ld(K.c,null)),pcats:migratePCats(ld(K.pc,null)),projects:migrateProjects(ld(K.p,null)),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null,editCatColor:null,newCatColor:null,
 // ── 프로젝트 관련 상태
 prjFilter:'active',  // 'active' | 'archived' | 'paused' | 'all'
+prjFolder:null,      // 열린 카테고리 폴더 id (null이면 폴더 그리드)
 prjOpen:null,        // 열려있는 프로젝트 id (null이면 목록)
 sprj:false,          // 프로젝트 추가/수정 모달
 eprj:null,           // 수정 중인 프로젝트 id
@@ -498,22 +499,65 @@ function dDayText(endDate){if(!endDate)return'';const t=new Date();t.setHours(0,
 function prjProgress(p){const tasks=p.tasks||[];if(!tasks.length)return{done:0,total:0,pct:0};const done=tasks.filter(t=>t.done).length;return{done,total:tasks.length,pct:Math.round(done/tasks.length*100)};}
 
 function rPr(){
-// 상세 페이지
+// 1. 프로젝트 상세 페이지
 if(S.prjOpen){const p=S.projects.find(x=>x.id===S.prjOpen);if(!p){S.prjOpen=null;return rPr();}return rPrDetail(p);}
 
-// 목록 페이지
+// 2. 폴더가 열린 경우 → 그 카테고리의 프로젝트 카드 목록
+if(S.prjFolder){
+const pc=pcatById(S.prjFolder);
+if(!pc){S.prjFolder=null;return rPr();}
 const tabs=[{k:'active',l:'활성'},{k:'paused',l:'일시중단'},{k:'archived',l:'보관'},{k:'all',l:'전체'}];
-let filtered=S.projects;
-if(S.prjFilter!=='all')filtered=S.projects.filter(p=>p.status===S.prjFilter);
+const inFolder=S.projects.filter(p=>p.pcat===S.prjFolder);
+let filtered=inFolder;
+if(S.prjFilter!=='all')filtered=inFolder.filter(p=>p.status===S.prjFilter);
 
 let cards='';
 if(!filtered.length){cards=`<div class="em">${S.prjFilter==='active'?'활성 프로젝트가 없어요. + 추가 버튼을 눌러 시작하세요':'해당 상태의 프로젝트가 없어요'}</div>`;}
-else{cards=filtered.map(p=>{const pc=pcatById(p.pcat)||{name:'기타',color:'#607D8B'};const prog=prjProgress(p);const dd=dDayText(p.endDate);
+else{cards=filtered.map(p=>renderPrjCard(p,pc)).join('');}
+
+return`<div class="sh"><h2>프로젝트</h2><button class="bp" id="aprj" style="padding:8px 14px">+ 추가</button></div>
+<div class="folder-back" id="prjFolderBack">← 전체 폴더</div>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+<div style="width:14px;height:14px;border-radius:7px;background:${pc.color};flex-shrink:0"></div>
+<span style="font-size:15px;font-weight:600;color:${pc.color}">${e(pc.name)}</span>
+<span style="font-size:12px;color:var(--sub)">${inFolder.length}개</span>
+</div>
+<div class="prj-tabs">${tabs.map(t=>{const cnt=t.k==='all'?inFolder.length:inFolder.filter(p=>p.status===t.k).length;return`<button class="${S.prjFilter===t.k?'active':''}" data-prjf="${t.k}">${t.l} (${cnt})</button>`;}).join('')}</div>
+${cards}`;}
+
+// 3. 폴더 그리드 (첫 화면)
+const folders=S.pcats.map(c=>{
+const inCat=S.projects.filter(p=>p.pcat===c.id);
+const activeCnt=inCat.filter(p=>p.status==='active').length;
+return`<div class="folder" data-prjcf="${c.id}" style="background:${c.color}15;border-color:${c.color}40">
+<div class="folder-name" style="color:${c.color}">${e(c.name)}</div>
+<div class="folder-count">${activeCnt}개${inCat.length>activeCnt?` · 전체 ${inCat.length}`:''}</div>
+</div>`;}).join('');
+
+// 카테고리 관리 영역
+const pcatMgr=`<div class="pcat-mgr">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="margin:0">📁 카테고리 편집</h4><button class="be" id="tpcat" style="font-size:11px">${S.spcat?'닫기':'열기'}</button></div>
+${S.spcat?`<div style="font-size:11px;color:var(--sub);margin-bottom:8px">칩을 탭하면 이름 수정 / 색상 변경, ×로 삭제</div>
+<div class="pcat-list" style="margin-bottom:10px">${S.pcats.map(c=>`<div class="pcat-chip" style="background:${c.color}22;color:${c.color}" data-epcc="${c.id}">${e(c.name)}<span class="x" data-dpc="${c.id}">×</span></div>`).join('')}</div>
+${S.editPCatColor?`<div style="font-size:11px;color:var(--sub);margin-bottom:6px">"${e((pcatById(S.editPCatColor)||{}).name||'')}" 색상 선택:</div><div class="color-palette" style="margin-bottom:10px">${FCOLORS.map(cl=>`<div class="color-dot" style="background:${cl}" data-setpcc="${cl}"></div>`).join('')}</div>`:''}
+<div class="aci" style="flex-wrap:wrap"><input id="npci" placeholder="새 카테고리 이름" value="${e(S.npci)}" style="width:140px"><button class="bp" id="apcb" style="padding:5px 10px;font-size:11px">추가</button></div>
+<div class="color-palette" style="margin-top:6px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newPCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-npcc="${cl}"></div>`).join('')}</div>`
+:''}
+</div>`;
+
+const totalActive=S.projects.filter(p=>p.status==='active').length;
+
+return`<div class="sh"><h2>프로젝트</h2><button class="bp" id="aprj" style="padding:8px 14px">+ 추가</button></div>
+<div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
+${pcatMgr}
+<div class="folder-grid">${folders}</div>`;}
+
+// 프로젝트 카드 한 개 렌더 (목록과 폴더 안에서 공통)
+function renderPrjCard(p,pc){const prog=prjProgress(p);const dd=dDayText(p.endDate);
 return`<div class="prj-card ${p.status}" data-prjopen="${p.id}" style="border-left-color:${pc.color}">
 <div class="prj-card-head">
 <div style="flex:1;min-width:0">
 <div class="prj-card-name">${e(p.name)}</div>
-<span class="prj-card-cat" style="background:${pc.color}22;color:${pc.color}">${e(pc.name)}</span>
 ${p.desc?`<div class="prj-card-desc">${e(p.desc)}</div>`:''}
 </div>
 <span class="prj-card-pri ${p.priority}">${p.priority}</span>
@@ -523,22 +567,7 @@ ${(p.endDate||p.status!=='active')?`<div class="prj-card-meta">
 <span>${p.endDate?'🎯 '+p.endDate:''}</span>
 <span>${dd?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}${p.status==='archived'?'<span class="prj-status-pill archived">보관</span>':p.status==='paused'?'<span class="prj-status-pill paused">일시중단</span>':''}</span>
 </div>`:''}
-</div>`;}).join('');}
-
-// 카테고리 관리 영역
-const pcatMgr=`<div class="pcat-mgr">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="margin:0">📁 카테고리</h4><button class="be" id="tpcat" style="font-size:11px">${S.spcat?'닫기':'편집'}</button></div>
-${S.spcat?`<div class="pcat-list" style="margin-bottom:10px">${S.pcats.map(c=>`<div class="pcat-chip" style="background:${c.color}22;color:${c.color}" data-epcc="${c.id}">${e(c.name)}<span class="x" data-dpc="${c.id}">×</span></div>`).join('')}</div>
-${S.editPCatColor?`<div style="font-size:11px;color:var(--sub);margin-bottom:6px">"${e((pcatById(S.editPCatColor)||{}).name||'')}" 색상 선택:</div><div class="color-palette" style="margin-bottom:10px">${FCOLORS.map(cl=>`<div class="color-dot" style="background:${cl}" data-setpcc="${cl}"></div>`).join('')}</div>`:''}
-<div class="aci" style="flex-wrap:wrap"><input id="npci" placeholder="새 카테고리 이름" value="${e(S.npci)}" style="width:140px"><button class="bp" id="apcb" style="padding:5px 10px;font-size:11px">추가</button></div>
-<div class="color-palette" style="margin-top:6px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newPCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-npcc="${cl}"></div>`).join('')}</div>`
-:`<div class="pcat-list">${S.pcats.map(c=>`<span class="pcat-chip" style="background:${c.color}22;color:${c.color}">${e(c.name)}</span>`).join('')}</div>`}
-</div>`;
-
-return`<div class="sh"><h2>프로젝트</h2><button class="bp" id="aprj" style="padding:8px 14px">+ 추가</button></div>
-<div class="prj-tabs">${tabs.map(t=>{const cnt=t.k==='all'?S.projects.length:S.projects.filter(p=>p.status===t.k).length;return`<button class="${S.prjFilter===t.k?'active':''}" data-prjf="${t.k}">${t.l} (${cnt})</button>`;}).join('')}</div>
-${pcatMgr}
-${cards}`;}
+</div>`;}
 
 // 프로젝트 상세 페이지
 function rPrDetail(p){const pc=pcatById(p.pcat)||{name:'기타',color:'#607D8B'};const prog=prjProgress(p);const dd=dDayText(p.endDate);
@@ -734,10 +763,12 @@ isDragging=false;dragId=null;curOver=null;});
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 
 // ── 프로젝트 이벤트 ──
+document.querySelectorAll('[data-prjcf]').forEach(b=>{b.onclick=()=>{S.prjFolder=b.dataset.prjcf;S.prjFilter='active';R();};b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();S.prjFolder=b.dataset.prjcf;S.prjFilter='active';R();},{passive:false});});
+const prjFolderBack=document.getElementById('prjFolderBack');if(prjFolderBack)prjFolderBack.onclick=()=>{S.prjFolder=null;R();};
 document.querySelectorAll('[data-prjf]').forEach(b=>b.onclick=()=>{S.prjFilter=b.dataset.prjf;R();});
 document.querySelectorAll('[data-prjopen]').forEach(b=>b.onclick=()=>{S.prjOpen=b.dataset.prjopen;R();});
 const prjBack=document.getElementById('prjBack');if(prjBack)prjBack.onclick=()=>{S.prjOpen=null;R();};
-const aprj=document.getElementById('aprj');if(aprj)aprj.onclick=()=>{S.prjForm={name:'',pcat:S.pcats[0]?S.pcats[0].id:'pc-etc',status:'active',priority:'P2',startDate:'',endDate:'',desc:''};S.eprj=null;S.sprj=true;R();};
+const aprj=document.getElementById('aprj');if(aprj)aprj.onclick=()=>{const defCat=S.prjFolder||(S.pcats[0]?S.pcats[0].id:'pc-etc');S.prjForm={name:'',pcat:defCat,status:'active',priority:'P2',startDate:'',endDate:'',desc:''};S.eprj=null;S.sprj=true;R();};
 document.querySelectorAll('[data-prjedit]').forEach(b=>b.onclick=()=>{const p=S.projects.find(x=>x.id===b.dataset.prjedit);if(!p)return;S.prjForm={name:p.name,pcat:p.pcat,status:p.status,priority:p.priority,startDate:p.startDate||'',endDate:p.endDate||'',desc:p.desc||''};S.eprj=p.id;S.sprj=true;R();});
 document.querySelectorAll('[data-prjst]').forEach(b=>b.onclick=()=>{const[id,st]=b.dataset.prjst.split(':');S.projects=S.projects.map(p=>p.id===id?{...p,status:st}:p);ps();R();});
 document.querySelectorAll('[data-prjdel]').forEach(b=>b.onclick=()=>{const p=S.projects.find(x=>x.id===b.dataset.prjdel);if(!p)return;if(confirm(`"${p.name}" 프로젝트를 삭제할까요? (할 일도 함께 삭제됩니다)`)){S.projects=S.projects.filter(x=>x.id!==p.id);S.prjOpen=null;ps();R();}});
