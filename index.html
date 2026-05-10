@@ -1616,6 +1616,48 @@ dragId=null;curOver=null;});
   // 입사지원 데이터는 있는데 'pc-job' 카테고리가 없으면 복구 (진입 경로 보호)
   if(S.jobs.length&&!pcatById('pc-job')){S.pcats=[{id:'pc-job',name:'취업',color:'#337EA9'},...S.pcats];sv(K.pc,S.pcats);}
   S.ready=true;
+
+  // ── 뒤로가기(popstate) 처리 ──
+  // 가짜 이력을 항상 1칸 유지해서 뒤로가기를 가로챔
+  // 우선순위: 미리보기 → 모달 → 상세 → 폴더 → 루트
+  function handleBack(){
+    // 1. 파일 미리보기 (이미지/PDF 풀스크린)
+    if(S.prev){S.prev=null;R();return true;}
+    // 2. 모달들 (닫기)
+    if(S.todoEditId){S.todoEditId=null;R();return true;}
+    if(S.sjf){S.sjf=false;S.pf=[];R();return true;}
+    if(S.sif){S.sif=false;S.pf=[];R();return true;}
+    if(S.sprj){S.sprj=false;R();return true;}
+    if(S.sms){S.sms=false;S.emsId=null;R();return true;}
+    if(S.msAssignTaskId){S.msAssignTaskId=null;R();return true;}
+    if(S.sretro){S.sretro=false;S.retroPrjId=null;S.retroNext='';R();return true;}
+    if(S.sac2){S.sac2=false;S.eacId=null;R();return true;}
+    if(S.stx){S.stx=false;S.etxId=null;R();return true;}
+    // 3. 상세 화면 → 목록
+    if(S.prjOpen){S.prjOpen=null;R();return true;}
+    if(S.moView==='account-detail'){S.moView='accounts';S.moAccountId=null;R();return true;}
+    // 4. 폴더 안 → 폴더 그리드
+    if(S.jobFilter){S.jobFilter=null;R();return true;}
+    if(S.prjFolder){S.prjFolder=null;R();return true;}
+    if(S.aCat){S.aCat=null;R();return true;}
+    // 5. 자산 서브탭이 홈 아니면 홈으로
+    if(S.tab==='money'&&S.moView!=='home'){S.moView='home';R();return true;}
+    // 6. 처리할 게 없음 → 앱 종료 허용
+    return false;
+  }
+
+  // 가짜 이력 한 칸 만들어두기
+  history.replaceState({brainy:'root'},'');
+  history.pushState({brainy:'guard'},'');
+
+  window.addEventListener('popstate',function(ev){
+    if(handleBack()){
+      // 처리됨 → 다시 가짜 이력 1칸 채우기
+      history.pushState({brainy:'guard'},'');
+    }
+    // 처리 안 됨 → 자연스럽게 앱 종료 (브라우저가 처리)
+  });
+
   R();
 })();
 </script>
