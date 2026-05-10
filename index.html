@@ -353,8 +353,6 @@ a{color:var(--blue);text-decoration:none;}
 .tx-quick button .em{font-size:14px;}
 .tx-quick button .lb{font-weight:500;}
 .tx-quick button .sb{font-size:10px;color:var(--sub);}
-.fab-btn{position:fixed;right:18px;bottom:84px;width:54px;height:54px;border-radius:27px;background:var(--text);color:#fff;border:none;font-size:28px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.15);cursor:pointer;z-index:40;}
-.fab-btn:active{background:var(--ad);transform:scale(.92);}
 .amt-input{display:flex;align-items:center;gap:6px;}
 .amt-input input{flex:1;font-size:18px;font-weight:600;text-align:right;padding:10px 12px;border:1px solid var(--border);border-radius:8px;}
 .amt-input .unit{color:var(--sub);font-size:14px;}
@@ -653,6 +651,7 @@ function migrateTodos(raw){if(!raw)return[];return raw.map(t=>({id:t.id||uid(),t
 let S={locked:sessionStorage.getItem('bw-auth')==='1'?false:true,pin:'',pinErr:false,tab:(()=>{const t=sessionStorage.getItem('bw-tab');return(t==='jobs'?'projects':t)||'home';})(),todos:migrateTodos(ld(K.t,[])),jobs:ld(K.j,[]),infos:ld(K.i,[]),cats:migrateCats(ld(K.c,null)),pcats:migratePCats(ld(K.pc,null)),projects:migrateProjects(ld(K.p,null)),files:{},selDate:fD(new Date()),tv:'day',tIn:'',sjf:false,ejid:null,jf:{company:'',position:'',deadline:'',applyDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''},aCat:null,sif:false,eiid:null,inf:{title:'',content:'',category:'',url:'',tags:''},sac:false,nci:'',cy:new Date().getFullYear(),cm:new Date().getMonth(),cs:null,prev:null,pf:[],ft:null,pwM:null,bkMsg:null,ready:false,jobFilter:null,editCatColor:null,newCatColor:null,
 gtdFilter:'all',  // GTD 필터 상태 (all/now/next/wait/hold)
 todoEditId:null,  // 할 일 편집 모달 (id가 들어있으면 모달 열림)
+todoIsNew:false,  // 새로 추가하는 중인지 (취소 시 빈 항목 삭제)
 // ── 프로젝트 관련 상태
 prjFilter:'active',  // 'active' | 'archived' | 'paused' | 'all'
 prjFolder:null,      // 열린 카테고리 폴더 id (null이면 폴더 그리드)
@@ -705,7 +704,9 @@ events:migrateEvents(ld(K.ev,null)),
 calView:'month',     // 'month' | 'week' | 'day'
 sev:false,           // 이벤트 추가/수정 모달
 eevId:null,
-evForm:{date:'',title:'',color:'#337EA9',memo:''}
+evForm:{date:'',title:'',color:'#337EA9',memo:''},
+// 새 폴더 추가 모달 ('pcat' | 'cat' | null)
+newFolderKind:null
 };
 function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
@@ -736,7 +737,7 @@ a.innerHTML=`<div class="topbar"><h1>Brainy Workplace</h1><div class="right"><sp
 <div class="sec ${S.tab==='calendar'?'active':''}">${rCl()}</div>
 <div class="sec ${S.tab==='money'?'active':''}">${rMo()}</div>
 <div class="sec ${S.tab==='settings'?'active':''}">${rSt()}</div>
-</main></div>${rBt()}${S.sjf?rJM():''}${S.sif?rIM():''}${S.sprj?rPrM():''}${S.sms?rMsM():''}${S.msAssignTaskId?rMsAssignM():''}${S.sretro?rRetroM():''}${S.todoEditId?rTodoM():''}${S.sac2?rAcM():''}${S.stx?rTxM():''}${S.sgl?rGlM():''}${S.spri?rPriM():''}${S.sev?rEvM():''}${S.prev?rPv():''}`;
+</main></div>${rBt()}${S.sjf?rJM():''}${S.sif?rIM():''}${S.sprj?rPrM():''}${S.sms?rMsM():''}${S.msAssignTaskId?rMsAssignM():''}${S.sretro?rRetroM():''}${S.todoEditId?rTodoM():''}${S.sac2?rAcM():''}${S.stx?rTxM():''}${S.sgl?rGlM():''}${S.spri?rPriM():''}${S.sev?rEvM():''}${S.newFolderKind?rNewFolderM():''}${S.prev?rPv():''}`;
 bEv();}
 
 function rLk(){const dots=Array.from({length:4},(_,i)=>`<div class="pin-dot ${S.pinErr?'error':i<S.pin.length?'filled':''}"></div>`).join('');
@@ -951,7 +952,8 @@ for(let i=0;i<7;i++){const ds=fD(wkDates[i]),isT=sD(wkDates[i],today);
 daysHtml+=`<div class="wp-day"><div class="wp-day-hdr ${isT?'is-today':''}"><div class="wp-day-label">${dayLabels[i]}</div><div class="wp-day-date">${wkDates[i].getMonth()+1}/${wkDates[i].getDate()}</div></div><div class="wp-day-content">${wpItems(ds)}<div class="wp-day-add"><input placeholder="+ 추가" data-wpadd="${ds}"></div></div></div>`;}
 daysHtml+='</div>';
 
-return`<div class="wp-nav"><button data-wn="-1">←</button><div class="wp-ntl">${st.getMonth()+1}월 ${st.getDate()}일 ~ ${wkEnd.getMonth()+1}월 ${wkEnd.getDate()}일</div><button data-wn="1">→</button></div>
+return`<div class="sh"><h2>할 일</h2><button class="bp" id="todoHdrAdd" style="padding:8px 14px">+ 할 일</button></div>
+<div class="wp-nav"><button data-wn="-1">←</button><div class="wp-ntl">${st.getMonth()+1}월 ${st.getDate()}일 ~ ${wkEnd.getMonth()+1}월 ${wkEnd.getDate()}일</div><button data-wn="1">→</button></div>
 <div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>
 <div class="wp"><div class="wp-title">WEEKLY PLANNER</div>
 <div class="wp-wl"><div class="wp-wl-title">${ic('pin',13)} Weekly List</div>${wlHtml}<div class="wp-wl-add"><input placeholder="이번 주 중요 메모 추가" data-wladd="${wlKey}"></div></div>
@@ -968,7 +970,8 @@ const gtdChip=t.gtd&&t.gtd!=='next'?`<span class="tt-bdg gtd" style="color:${gtd
 const focChip=t.focus?`<span class="tt-bdg foc" style="color:${focusColor(t.focus)}">${focusLabel(t.focus)}</span>`:'';
 const meta=(gtdChip||focChip||todChips)?`<div class="tt-meta">${gtdChip}${focChip}${todChips}</div>`:'';
 return`<div class="ti ${t.done?'done':''} ${t.priority?'pri':''}" data-dragid="${t.id}" draggable="true"><div class="dh" data-drag="${t.id}">${ic('drag',14)}</div><div class="cb ${t.done?'chk':''}" data-tg="${t.id}"></div><div style="flex:1;min-width:0"><span class="tt ${t.done?'dn':''}" data-edt="${t.id}">${t.priority?`<span style="color:var(--danger);margin-right:4px;display:inline-flex;vertical-align:-2px">${ic('star_fill',12)}</span>`:''}${e(t.text)}</span>${meta}${rCFs(t.id)}</div><button class="sb2 ${t.priority?'son':'sof'}" data-sr="${t.id}">${ic('star',16)}</button><button class="db2" data-dt="${t.id}">×</button></div>`;}).join('')}</div>`;
-return`<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${pg}${rDailyLog(S.selDate)}<div class="gtd-tabs"><button class="${S.gtdFilter==='all'?'active':''}" data-gf="all">전체 (${dtAll.length})</button>${GTD_LIST.map(g=>{const cnt=dtAll.filter(t=>(t.gtd||'next')===g.k).length;return`<button class="${S.gtdFilter===g.k?'active':''}" data-gf="${g.k}">${g.l} (${cnt})</button>`;}).join('')}</div><div class="ir"><input id="tii" placeholder="할 일을 입력하세요" value="${e(S.tIn)}"><button class="bp" id="ab">추가</button></div><div style="margin-bottom:12px"><label class="fab" data-ff="todo">${ic('attach',14)} 파일 첨부</label>${S.ft==='todo'?rPFs():''}</div>${ls}`;}
+return`<div class="sh"><h2>할 일</h2><button class="bp" id="todoHdrAdd" style="padding:8px 14px">+ 할 일</button></div>
+<div class="dn2"><button data-dn="-1">←</button><div class="ctr"><div class="dtl">${d.getMonth()+1}월 ${d.getDate()}일 ${DY[d.getDay()]}요일</div>${iT?'<span class="tbd">오늘</span>':''}</div><button data-dn="1">→</button></div><div class="vt"><button class="${S.tv==='day'?'active':''}" data-vt="day">일별</button><button class="${S.tv==='week'?'active':''}" data-vt="week">주별</button></div>${pg}${rDailyLog(S.selDate)}<div class="gtd-tabs"><button class="${S.gtdFilter==='all'?'active':''}" data-gf="all">전체 (${dtAll.length})</button>${GTD_LIST.map(g=>{const cnt=dtAll.filter(t=>(t.gtd||'next')===g.k).length;return`<button class="${S.gtdFilter===g.k?'active':''}" data-gf="${g.k}">${g.l} (${cnt})</button>`;}).join('')}</div>${ls}`;}
 
 function rJb(){const stsOrder=['최종합격','면접예정','서류합격','지원완료','준비중','불합격'];
 const activeJF=S.jobFilter;
@@ -1065,12 +1068,8 @@ folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable
 // 미분류 (루트만)
 if(!curId){const uncatCount=S.infos.filter(x=>!x.category||!catById(x.category)).length;
 if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__">${folderIcon(72,'#9B9A97')}<div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;}
-// 새 폴더 버튼
-if(S.sac){
-folders+=`<div class="folder-add"><div class="aci" style="justify-content:center;flex-wrap:wrap"><input id="nci" placeholder="폴더명" value="${e(S.nci)}" style="width:80px;text-align:center"><button class="bp" style="padding:4px 8px;font-size:11px" id="scb">추가</button><button style="padding:4px 8px;font-size:11px;color:var(--sub)" id="ccb">취소</button></div>
-<div class="color-palette" style="margin-top:8px">${FCOLORS.map(cl=>`<div class="color-dot ${(S.newCatColor||FCOLORS[0])===cl?'sel':''}" style="background:${cl}" data-ncc="${cl}"></div>`).join('')}</div></div>`;
-}else{
-folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;}
+// 새 폴더 버튼 (클릭 시 모달)
+folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
 folders+='</div>';}
 
 // 현재 폴더의 정보 카드 목록
@@ -1090,8 +1089,8 @@ ${folders}${cd}`;}
 
 function rTodoM(){const t=S.todos.find(x=>x.id===S.todoEditId);if(!t)return'';
 return`<div class="mo" id="todoMo"><div class="mb">
-<h3>할 일 편집</h3>
-<div class="fg"><label>내용</label><input id="teTx" value="${e(t.text)}"></div>
+<h3>${S.todoIsNew?'할 일 추가':'할 일 편집'}</h3>
+<div class="fg"><label>내용</label><input id="teTx" value="${e(t.text)}" placeholder="할 일을 입력하세요" autofocus></div>
 <div class="todo-edit-section"><label>GTD 분류</label><div class="todo-edit-chips" id="teGtd">
 ${GTD_LIST.map(g=>`<button class="${(t.gtd||'next')===g.k?'sel':''}" data-tegtd="${g.k}">${g.l}</button>`).join('')}
 </div></div>
@@ -1156,13 +1155,8 @@ ${folderIcon(72,c.color)}
 
 const totalActive=S.projects.filter(p=>p.status==='active').length;
 
-// 폴더 그리드: 기존 폴더들 + (편집 중이면 인라인 입력 카드 / 아니면 + 새 폴더 카드)
-const addCard=S.spcat?(()=>{const c=S.newPCatColor||FCOLORS[0];return`<div class="folder folder-add-inline">
-${folderIcon(72,c)}
-<input id="npci" placeholder="폴더 이름" value="${e(S.npci)}" style="width:100%;font-size:11px;text-align:center;border:none;border-bottom:1px solid var(--border);padding:4px 0;margin-top:4px;background:transparent;outline:none">
-<div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:4px;max-width:90px">${FCOLORS.slice(0,8).map(cl=>`<div style="width:14px;height:14px;border-radius:7px;background:${cl};cursor:pointer;border:2px solid ${(S.newPCatColor||FCOLORS[0])===cl?'var(--text)':'transparent'};box-sizing:border-box" data-npcc="${cl}"></div>`).join('')}</div>
-<div style="display:flex;gap:4px;margin-top:4px"><button class="bp" id="apcb" style="padding:3px 8px;font-size:10px">추가</button><button id="cancpc" style="padding:3px 8px;font-size:10px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:6px">취소</button></div>
-</div>`;})():`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
+// 폴더 그리드: 기존 폴더들 + 새 폴더 추가 카드 (클릭 시 모달)
+const addCard=`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
 
 return`<div class="sh"><h2>프로젝트</h2></div>
 <div style="font-size:12px;color:var(--sub);margin-bottom:10px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
@@ -1361,10 +1355,15 @@ else if(S.moView==='txs')body=rMoTxs();
 else if(S.moView==='goals')body=rMoGoals();
 else body=rMoHome();
 
-return`<div class="sh"><h2>자산관리</h2></div>
+// 서브탭에 따라 헤더 + 버튼 다르게
+let addBtn='';
+if(S.moView==='accounts'||S.moView==='account-detail')addBtn=`<button class="bp" id="moAddBtn" data-moadd="account" style="padding:8px 14px">+ 계좌</button>`;
+else if(S.moView==='goals'||S.moView==='goal-detail')addBtn=`<button class="bp" id="moAddBtn" data-moadd="goal" style="padding:8px 14px">+ 목표</button>`;
+else addBtn=`<button class="bp" id="moAddBtn" data-moadd="tx" style="padding:8px 14px">+ 거래</button>`;
+
+return`<div class="sh"><h2>자산관리</h2>${addBtn}</div>
 <div class="mo-tabs">${tabs.map(t=>{const isActive=S.moView===t.k||(t.k==='accounts'&&S.moView==='account-detail')||(t.k==='goals'&&S.moView==='goal-detail');return`<button class="${isActive?'active':''}" data-mov="${t.k}">${t.l}</button>`;}).join('')}</div>
-${body}
-<button class="fab-btn" id="moFab">+</button>`;}
+${body}`;}
 
 function rMoHome(){
 const total=totalAssets();
@@ -1722,10 +1721,9 @@ if(S.calView==='week')body=rClWeek(ms,today);
 else if(S.calView==='day')body=rClDay(ms,today);
 else body=rClMonth(ms,today);
 
-return`<div class="sh"><h2>캘린더</h2></div>
+return`<div class="sh"><h2>캘린더</h2><button class="bp" id="evFab" style="padding:8px 14px">+ 일정</button></div>
 <div class="vt" style="margin-bottom:12px"><button class="${S.calView==='month'?'active':''}" data-cv="month">월</button><button class="${S.calView==='week'?'active':''}" data-cv="week">주</button><button class="${S.calView==='day'?'active':''}" data-cv="day">일</button></div>
-${body}
-<button class="fab-btn" id="evFab">+</button>`;}
+${body}`;}
 
 // 월간 뷰
 function rClMonth(ms,td){const y=S.cy,m=S.cm,fd=new Date(y,m,1).getDay(),dm=new Date(y,m+1,0).getDate();
@@ -1816,6 +1814,22 @@ return`<div class="mo" id="evMo"><div class="mb">
 <div class="fg"><label>메모</label><textarea id="evM" rows="2" placeholder="선택사항">${e(f.memo)}</textarea></div>
 <div class="fb"><button class="sv" id="evSv">저장</button><button class="cn" id="evCn">취소</button>${S.eevId?`<button class="cn" id="evDel" style="background:#FDECEA;color:var(--danger)">삭제</button>`:''}</div>
 </div></div>`;}
+
+// 새 폴더 추가 모달 — 프로젝트(pcat) / 아카이브(cat) 공통
+// kind: 'pcat' (프로젝트) | 'cat' (아카이브)
+function rNewFolderM(){const kind=S.newFolderKind;if(!kind)return'';
+const isProj=kind==='pcat';
+const name=isProj?S.npci:S.nci;
+const color=(isProj?S.newPCatColor:S.newCatColor)||FCOLORS[0];
+return`<div class="mo" id="newFolderMo"><div class="mb" style="max-width:340px">
+<h3>${isProj?'프로젝트 카테고리 추가':'폴더 추가'}</h3>
+<div style="display:flex;justify-content:center;margin:8px 0 16px">${folderIcon(72,color)}</div>
+<div class="fg"><label>폴더 이름 *</label><input id="nfn" value="${e(name)}" placeholder="예: ${isProj?'사이드 프로젝트':'채용정보'}" autofocus></div>
+<div class="fg"><label>색상</label>
+<div class="color-palette" style="margin-top:8px">${FCOLORS.map(cl=>`<div class="color-dot ${color===cl?'sel':''}" style="background:${cl}" data-nfc="${cl}"></div>`).join('')}</div>
+</div>
+<div class="fb"><button class="sv" id="nfSv">추가</button><button class="cn" id="nfCn">취소</button></div>
+</div></div>`;}
 // 통합 이벤트 수집 — 특정 날짜의 모든 일정
 // 반환: [{type, label, color, sourceId?, source?}]
 function gEv(ds){const ev=[];
@@ -1859,7 +1873,7 @@ function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
 // 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더)
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 // navStack 비움 + 가드 이력만 유지 (replace로 교체)
@@ -1885,7 +1899,7 @@ R();});
 const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{
 S.locked=true;S.pin='';sessionStorage.removeItem('bw-auth');
 // 깊은 상태 모두 리셋
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;S.moView='home';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
 R();};
@@ -1918,14 +1932,14 @@ document.querySelectorAll('[data-acedit]').forEach(b=>b.onclick=()=>{const a=acc
 document.querySelectorAll('[data-acdel]').forEach(b=>b.onclick=()=>{const a=accountById(b.dataset.acdel);if(!a)return;const txCnt=S.txs.filter(t=>t.accountId===a.id).length;if(txCnt&&!confirm(`이 계좌의 거래 내역 ${txCnt}건도 함께 삭제됩니다. 계속할까요?`))return;if(!txCnt&&!confirm(`"${a.name}" 계좌를 삭제할까요?`))return;S.accounts=S.accounts.filter(x=>x.id!==a.id);S.txs=S.txs.filter(t=>t.accountId!==a.id);S.moView='accounts';S.moAccountId=null;ps();R();});
 document.querySelectorAll('[data-txedit]').forEach(b=>b.onclick=()=>{const t=S.txs.find(x=>x.id===b.dataset.txedit);if(!t)return;S.txForm={...t};S.etxId=t.id;S.stx=true;navPush(()=>{S.stx=false;S.etxId=null;});R();});
 
-// FAB 버튼 (계좌 탭이면 계좌 추가, GOAL 탭이면 GOAL 추가, 아니면 거래 추가)
-const moFab=document.getElementById('moFab');if(moFab)moFab.onclick=()=>{
-if(S.moView==='accounts'||S.moView==='account-detail'){S.acForm={name:'',kind:'checking',bank:'기타',currency:'KRW',balance:0,memo:'',active:true};S.eacId=null;S.sac2=true;navPush(()=>{S.sac2=false;S.eacId=null;});}
-else if(S.moView==='goals'||S.moView==='goal-detail'){S.glForm={name:'',targetAmount:0,targetDate:'',priority:'P1',status:'active',accountIds:[],memo:''};S.eglId=null;S.sgl=true;navPush(()=>{S.sgl=false;S.eglId=null;});}
-else{if(!S.accounts.filter(a=>a.active!==false).length){alert('먼저 계좌를 추가해주세요. 계좌 탭으로 이동합니다.');S.moView='accounts';R();return;}
+// 자산 헤더 + 버튼 (서브탭별 동작)
+document.querySelectorAll('[data-moadd]').forEach(b=>b.onclick=()=>{const kind=b.dataset.moadd;
+if(kind==='account'){S.acForm={name:'',kind:'checking',bank:'기타',currency:'KRW',balance:0,memo:'',active:true};S.eacId=null;S.sac2=true;navPush(()=>{S.sac2=false;S.eacId=null;});}
+else if(kind==='goal'){S.glForm={name:'',targetAmount:0,targetDate:'',priority:'P1',status:'active',accountIds:[],memo:''};S.eglId=null;S.sgl=true;navPush(()=>{S.sgl=false;S.eglId=null;});}
+else if(kind==='tx'){if(!S.accounts.filter(a=>a.active!==false).length){alert('먼저 계좌를 추가해주세요. 계좌 탭으로 이동합니다.');S.moView='accounts';R();return;}
 const defAcc=S.accounts.filter(a=>a.active!==false)[0];
 S.txForm={date:fD(new Date()),title:'',type:'expense',amount:0,accountId:defAcc.id,category:'식비',pay:'card',fixed:false,memo:''};S.etxId=null;S.stx=true;navPush(()=>{S.stx=false;S.etxId=null;});}
-R();};
+R();});
 
 // 계좌 모달
 const acMo=document.getElementById('acMo');if(acMo)acMo.onclick=(ev)=>{if(ev.target===acMo){history.back();}};
@@ -2004,22 +2018,24 @@ document.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{S.todos=S.todos
 document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{S.todos=S.todos.map(t=>t.id===b.dataset.sr?{...t,priority:!t.priority}:t);ps();R();});
 document.querySelectorAll('[data-dt]').forEach(b=>b.onclick=()=>{const id=b.dataset.dt;S.todos=S.todos.filter(t=>t.id!==id);delete S.files[id];ps();R();});
 // Todo edit
-document.querySelectorAll('[data-edt]').forEach(b=>b.onclick=()=>{S.todoEditId=b.dataset.edt;navPush(()=>{S.todoEditId=null;});R();});
+document.querySelectorAll('[data-edt]').forEach(b=>b.onclick=()=>{S.todoEditId=b.dataset.edt;S.todoIsNew=false;navPush(()=>{S.todoEditId=null;});R();});
 // GTD 필터
 document.querySelectorAll('[data-gf]').forEach(b=>b.onclick=()=>{S.gtdFilter=b.dataset.gf;R();});
 // Todo 편집 모달
 const todoMo=document.getElementById('todoMo');if(todoMo)todoMo.onclick=(ev)=>{if(ev.target===todoMo){history.back();}};
 const teCn=document.getElementById('teCn');if(teCn)teCn.onclick=()=>{history.back();};
 const teSv=document.getElementById('teSv');if(teSv)teSv.onclick=()=>{
-const tx=document.getElementById('teTx').value.trim();if(!tx)return;
+const tx=document.getElementById('teTx').value.trim();if(!tx){alert('내용을 입력해주세요');return;}
 const id=S.todoEditId;
 // 현재 모달의 칩 상태를 DOM에서 읽음 (sel 클래스로 판단)
 const gtd=(document.querySelector('#teGtd button.sel')||{}).dataset?.tegtd||'next';
 const tod=Array.from(document.querySelectorAll('#teTod button.sel')).map(b=>b.dataset.tetod);
 const foc=(document.querySelector('#teFoc button.sel')||{}).dataset?.tefoc||'';
 S.todos=S.todos.map(x=>x.id===id?{...x,text:tx,gtd,timeOfDay:tod,focus:foc}:x);
+S.todoIsNew=false; // 저장 성공 — popstate에서 빈 할 일 삭제 안 됨
 ps();history.back();};
 // 모달 안 칩 토글 (단일/복수)
+const teTx=document.getElementById('teTx');if(teTx)teTx.onkeydown=(ev)=>{if(ev.key==='Enter'){ev.preventDefault();const sv=document.getElementById('teSv');if(sv)sv.click();}};
 document.querySelectorAll('[data-tegtd]').forEach(b=>b.onclick=()=>{document.querySelectorAll('#teGtd button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
 document.querySelectorAll('[data-tefoc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('#teFoc button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
 document.querySelectorAll('[data-tetod]').forEach(b=>b.onclick=()=>{b.classList.toggle('sel');});
@@ -2053,6 +2069,17 @@ dragId=null;curOver=null;});
 });})();
 const tii=document.getElementById('tii');if(tii){tii.oninput=()=>{S.tIn=tii.value;};tii.onkeydown=(ev)=>{if(ev.key==='Enter')aTd();};}
 const ab=document.getElementById('ab');if(ab)ab.onclick=aTd;
+const todoHdrAdd=document.getElementById('todoHdrAdd');if(todoHdrAdd)todoHdrAdd.onclick=()=>{
+// 새 빈 할 일을 추가하고 그 id를 편집 모달에 띄움
+const id=uid();
+S.todos.push({id,text:'',done:false,date:S.selDate,priority:false,gtd:'next',timeOfDay:[],focus:null});
+S.todoEditId=id;S.todoIsNew=true;
+navPush(()=>{
+// 뒤로가기로 닫힐 때: 빈 할 일이면 삭제
+if(S.todoIsNew){const t=S.todos.find(x=>x.id===id);if(t&&!t.text.trim())S.todos=S.todos.filter(x=>x.id!==id);}
+S.todoEditId=null;S.todoIsNew=false;
+});
+R();setTimeout(()=>{const el=document.getElementById('teTx');if(el)el.focus();},80);};
 // Weekly planner nav
 document.querySelectorAll('[data-wn]').forEach(b=>b.onclick=()=>{const d=pD(S.selDate);d.setDate(d.getDate()+parseInt(b.dataset.wn)*7);S.selDate=fD(d);R();});
 // Weekly planner inline add
@@ -2080,7 +2107,23 @@ document.querySelectorAll('[data-ec]').forEach(b=>b.onclick=(ev)=>{ev.stopPropag
 document.querySelectorAll('[data-ecc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();S.editCatColor=S.editCatColor===b.dataset.ecc?null:b.dataset.ecc;R();});
 document.querySelectorAll('[data-setcc]').forEach(b=>b.onclick=()=>{const cl=b.dataset.setcc;S.cats=S.cats.map(c=>c.id===S.editCatColor?{...c,color:cl}:c);S.editCatColor=null;ps();R();});
 document.querySelectorAll('[data-ncc]').forEach(b=>b.onclick=()=>{S.newCatColor=b.dataset.ncc;R();});
-const sacb=document.getElementById('sacb');if(sacb)sacb.onclick=()=>{S.sac=true;R();setTimeout(()=>{const el=document.getElementById('nci');if(el)el.focus();},50);};
+const sacb=document.getElementById('sacb');if(sacb)sacb.onclick=()=>{S.newFolderKind='cat';S.nci='';S.newCatColor=FCOLORS[0];navPush(()=>{S.newFolderKind=null;});R();setTimeout(()=>{const el=document.getElementById('nfn');if(el)el.focus();},50);};
+
+// 새 폴더 모달 (프로젝트/아카이브 공통)
+const newFolderMo=document.getElementById('newFolderMo');if(newFolderMo)newFolderMo.onclick=(ev)=>{if(ev.target===newFolderMo){history.back();}};
+document.querySelectorAll('[data-nfc]').forEach(b=>b.onclick=()=>{const c=b.dataset.nfc;if(S.newFolderKind==='pcat')S.newPCatColor=c;else S.newCatColor=c;R();});
+const nfn=document.getElementById('nfn');if(nfn){
+nfn.oninput=()=>{if(S.newFolderKind==='pcat')S.npci=nfn.value;else S.nci=nfn.value;};
+nfn.onkeydown=(ev)=>{if(ev.key==='Enter'){ev.preventDefault();const sv=document.getElementById('nfSv');if(sv)sv.click();}};}
+const nfSv=document.getElementById('nfSv');if(nfSv)nfSv.onclick=()=>{
+const isProj=S.newFolderKind==='pcat';
+const name=(isProj?S.npci:S.nci)||'';
+const color=(isProj?S.newPCatColor:S.newCatColor)||FCOLORS[0];
+if(!name.trim()){alert('폴더 이름을 입력해주세요');return;}
+if(isProj){S.pcats.push({id:uid(),name:name.trim(),color});S.npci='';S.newPCatColor=null;}
+else{S.cats.push({id:uid(),name:name.trim(),color,parent:null});S.nci='';S.newCatColor=null;}
+ps();history.back();};
+const nfCn=document.getElementById('nfCn');if(nfCn)nfCn.onclick=()=>{history.back();};
 const scb=document.getElementById('scb');if(scb)scb.onclick=sCt;
 const ccb=document.getElementById('ccb');if(ccb)ccb.onclick=()=>{S.sac=false;S.nci='';R();};
 const nci=document.getElementById('nci');if(nci){nci.oninput=()=>{S.nci=nci.value;};nci.onkeydown=(ev)=>{if(ev.key==='Enter')sCt();};}
@@ -2260,7 +2303,7 @@ dragId=null;curOver=null;});
 
 // 프로젝트 카테고리 관리
 // "+ 새 폴더" 카드 클릭 → 인라인 추가 모드 켜기
-const addPCatBtn=document.getElementById('addPCatBtn');if(addPCatBtn)addPCatBtn.onclick=()=>{S.spcat=true;S.newPCatColor=FCOLORS[0];R();setTimeout(()=>{const el=document.getElementById('npci');if(el)el.focus();},50);};
+const addPCatBtn=document.getElementById('addPCatBtn');if(addPCatBtn)addPCatBtn.onclick=()=>{S.newFolderKind='pcat';S.npci='';S.newPCatColor=FCOLORS[0];navPush(()=>{S.newFolderKind=null;});R();setTimeout(()=>{const el=document.getElementById('nfn');if(el)el.focus();},50);};
 // 인라인 추가 모드 — 색상 선택
 document.querySelectorAll('[data-npcc]').forEach(b=>b.onclick=()=>{S.newPCatColor=b.dataset.npcc;R();});
 // 인라인 추가 모드 — 이름 입력
