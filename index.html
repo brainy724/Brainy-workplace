@@ -980,6 +980,11 @@ eevId:null,
 evForm:{date:'',title:'',color:'#337EA9',memo:''},
 // 새 폴더 추가 모달 ('pcat' | 'cat' | null)
 newFolderKind:null,
+// 검색/필터
+infoSearch:'',     // 아카이브 검색어
+infoTagFilter:'',  // 아카이브 태그 필터
+prjSearch:'',      // 프로젝트 검색어
+txSearch:'',       // 거래 검색어
 // ── 정기구독·고정비
 subs:migrateSubs(ld(K.sub,null)),
 ssub:false,          // 정기구독 추가/수정 모달
@@ -1389,9 +1394,34 @@ cd=!uncatItems.length?`<div class="em">미분류 항목이 없어요</div>`:
 `<div id="infoList">${[...uncatItems].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">${ic('drag',14)}</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;}
 
 return`<div class="sh"><h2>아카이브</h2>${curId?`<button class="bp" id="aib" style="padding:8px 14px">+ 추가</button>`:''}</div>
+${!curId?(()=>{
+// 루트에서만 검색바/태그 필터 표시
+const search=S.infoSearch||'';
+const tagFilter=S.infoTagFilter||'';
+// 모든 태그 수집
+const allTags=new Set();
+S.infos.forEach(inf=>{if(inf.tags)inf.tags.split(',').map(t=>t.trim()).filter(Boolean).forEach(t=>allTags.add(t));});
+const tagList=[...allTags].sort();
+let html=`<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center"><input id="infoSearchIn" placeholder="제목/내용/태그 검색" value="${e(search)}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">${(search||tagFilter)?`<button id="infoSearchClear" style="padding:8px 12px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:11px">초기화</button>`:''}</div>`;
+if(tagList.length)html+=`<div style="display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:6px;margin-bottom:10px">${tagList.map(t=>`<button class="info-tag-chip ${tagFilter===t?'active':''}" data-itagf="${e(t)}" style="padding:5px 11px;border-radius:14px;font-size:11px;color:${tagFilter===t?'#fff':'var(--sub)'};background:${tagFilter===t?'var(--text)':'transparent'};white-space:nowrap;border:1px solid ${tagFilter===t?'var(--text)':'var(--border)'};font-weight:${tagFilter===t?'600':'400'};flex-shrink:0">#${e(t)}</button>`).join('')}</div>`;
+return html;})():''}
 ${bread}${header}
-<div style="font-size:12px;color:var(--sub);margin-bottom:8px">${!curId?'총 '+S.infos.length+'건':''}</div>
-${folders}${cd}`;}
+${(()=>{
+// 검색/필터가 활성화돼있으면 폴더 무시하고 결과 직접 표시
+if(!curId&&(S.infoSearch||S.infoTagFilter)){
+const q=(S.infoSearch||'').toLowerCase().trim();
+const tag=S.infoTagFilter||'';
+const filtered=S.infos.filter(inf=>{
+const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];
+if(tag&&!tags.includes(tag))return false;
+if(q){const hay=(inf.title+' '+(inf.content||'')+' '+(inf.url||'')+' '+tags.join(' ')).toLowerCase();if(!hay.includes(q))return false;}
+return true;});
+if(!filtered.length)return`<div class="em">검색 결과가 없어요</div>`;
+return`<div style="font-size:12px;color:var(--sub);margin-bottom:8px">검색 결과 ${filtered.length}건</div>
+<div id="infoList">${[...filtered].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];const cat=catById(inf.category);return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">${ic('drag',14)}</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div>${cat?`<div style="font-size:10px;color:${cat.color};margin-top:2px">${e(cat.name)}</div>`:''}</div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;}
+// 검색/필터 비활성 → 기본 폴더 그리드
+return`<div style="font-size:12px;color:var(--sub);margin-bottom:8px">${!curId?'총 '+S.infos.length+'건':''}</div>
+${folders}${cd}`;})()}`;}
 
 function rTodoM(){const t=S.todos.find(x=>x.id===S.todoEditId);if(!t)return'';
 return`<div class="mo" id="todoMo"><div class="mb">
@@ -1478,8 +1508,18 @@ const totalActive=S.projects.filter(p=>p.status==='active').length;
 const addCard=`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
 
 return`<div class="sh"><h2>프로젝트</h2></div>
-<div style="font-size:12px;color:var(--sub);margin-bottom:10px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
-<div class="folder-grid">${folders}${addCard}</div>
+<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center"><input id="prjSearchIn" placeholder="프로젝트 검색" value="${e(S.prjSearch||'')}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">${S.prjSearch?`<button id="prjSearchClear" style="padding:8px 12px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:11px">초기화</button>`:''}</div>
+${(()=>{
+// 검색어 있으면 모든 폴더에서 매칭되는 프로젝트 카드 표시
+if(S.prjSearch&&S.prjSearch.trim()){
+const q=S.prjSearch.toLowerCase().trim();
+const matched=S.projects.filter(p=>{const hay=(p.name+' '+(p.desc||'')).toLowerCase();return hay.includes(q);});
+if(!matched.length)return`<div class="em">검색 결과가 없어요</div>`;
+return`<div style="font-size:12px;color:var(--sub);margin-bottom:8px">검색 결과 ${matched.length}건</div>
+${matched.map(p=>{const pc=pcatById(p.pcat)||{name:'기타',color:'#787774'};return renderPrjCard(p,pc);}).join('')}`;}
+// 기본: 폴더 그리드
+return`<div style="font-size:12px;color:var(--sub);margin-bottom:10px">총 ${S.projects.length}개 (활성 ${totalActive}개)</div>
+<div class="folder-grid">${folders}${addCard}</div>`;})()}
 ${S.editPCatColor?rPCatActionM():''}`;}
 
 // 폴더 길게 누르기 액션 모달
@@ -1922,7 +1962,9 @@ function rMoTxs(){
 const ym=curMonth();
 const allMonthTxs=txsInMonth(ym);
 const catFilter=S.txCatFilter||null;
-const monthTxs=catFilter?allMonthTxs.filter(t=>(t.category||'기타')===catFilter):allMonthTxs;
+const search=(S.txSearch||'').toLowerCase().trim();
+let monthTxs=catFilter?allMonthTxs.filter(t=>(t.category||'기타')===catFilter):allMonthTxs;
+if(search){monthTxs=monthTxs.filter(t=>{const hay=((t.title||'')+' '+(t.memo||'')+' '+(t.category||'')).toLowerCase();return hay.includes(search);});}
 const sorted=[...monthTxs].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 const txsByDate={};
 sorted.forEach(t=>{(txsByDate[t.date]=txsByDate[t.date]||[]).push(t);});
@@ -1958,9 +2000,10 @@ return`<div class="mo-month-nav">
 <div class="mo-sum-card income"><div class="lab">수입</div><div class="val">+${fmtKRWShort(income)}</div></div>
 <div class="mo-sum-card expense"><div class="lab">지출</div><div class="val">-${fmtKRWShort(expense)}</div></div>
 </div>
+<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center"><input id="txSearchIn" placeholder="제목/메모/카테고리 검색" value="${e(S.txSearch||'')}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">${S.txSearch?`<button id="txSearchClear" style="padding:8px 12px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:11px">초기화</button>`:''}</div>
 ${catSummary}
 ${catChips}
-${monthTxs.length?txHtml:`<div class="tx-empty" style="padding:40px 24px">${catFilter?`"${catFilter}" 카테고리의 거래가 없어요.`:'이 달의 거래가 없어요.<br>+ 버튼으로 추가하세요'}</div>`}`;}
+${monthTxs.length?txHtml:`<div class="tx-empty" style="padding:40px 24px">${S.txSearch?`"${S.txSearch}" 검색 결과가 없어요`:catFilter?`"${catFilter}" 카테고리의 거래가 없어요.`:'이 달의 거래가 없어요.<br>+ 버튼으로 추가하세요'}</div>`}`;}
 
 function renderTxRow(t){
 const a=accountById(t.accountId);
@@ -2465,14 +2508,44 @@ function rSt(){return`<div class="sh"><h2>설정</h2></div><div class="stc"><h3 
 <input type="file" id="bkImp" accept=".json" style="display:none">
 ${S.bkMsg?`<div class="smg ${S.bkMsg.o?'ok':'er'}">${S.bkMsg.t}</div>`:''}
 <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">• 내보내기: JSON 파일로 다운로드됩니다<br>• 불러오기: 기존 데이터를 덮어씁니다<br>• 첨부파일은 IndexedDB에 저장 (용량 걱정 없음)</div></div>
+${(()=>{
+// 사용 통계
+const todos=S.todos||[];
+const totalDone=todos.filter(t=>t.done).length;
+const totalAll=todos.length;
+// 가장 오래된 데이터 = 가입 시점 추정
+let firstDate=null;
+const allDates=[];
+todos.forEach(t=>{if(t.date)allDates.push(t.date);});
+S.events.forEach(t=>{if(t.date)allDates.push(t.date);});
+S.txs.forEach(t=>{if(t.date)allDates.push(t.date);});
+S.infos.forEach(t=>{if(t.createdAt)allDates.push(t.createdAt.substring(0,10));});
+if(allDates.length){allDates.sort();firstDate=allDates[0];}
+const today=new Date();today.setHours(0,0,0,0);
+let usedDays=0;
+if(firstDate){const fd=pD(firstDate);if(fd)usedDays=Math.max(1,Math.round((today-fd)/(1000*60*60*24))+1);}
+// 활성 프로젝트
+const activePrjs=(S.projects||[]).filter(p=>p.status==='active').length;
+const archivedPrjs=(S.projects||[]).filter(p=>p.status==='archived').length;
+// 자산
+const totalA=totalAssets();
+return`<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('trending',16)} 사용 통계</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px"><div style="font-size:10px;color:var(--sub);margin-bottom:2px">사용 기간</div><div style="font-size:18px;font-weight:700;color:var(--text)">${usedDays?usedDays+'일':'-'}</div>${firstDate?`<div style="font-size:10px;color:var(--sub);margin-top:2px">${firstDate} 시작</div>`:''}</div>
+<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px"><div style="font-size:10px;color:var(--sub);margin-bottom:2px">완료한 할 일</div><div style="font-size:18px;font-weight:700;color:#0F7B6C">${totalDone}<span style="font-size:11px;color:var(--sub);font-weight:400">/${totalAll}</span></div><div style="font-size:10px;color:var(--sub);margin-top:2px">${totalAll?Math.round(totalDone/totalAll*100):0}% 완료율</div></div>
+<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px"><div style="font-size:10px;color:var(--sub);margin-bottom:2px">활성 프로젝트</div><div style="font-size:18px;font-weight:700;color:var(--text)">${activePrjs}<span style="font-size:11px;color:var(--sub);font-weight:400">/${activePrjs+archivedPrjs}</span></div><div style="font-size:10px;color:var(--sub);margin-top:2px">${archivedPrjs}개 보관</div></div>
+<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px"><div style="font-size:10px;color:var(--sub);margin-bottom:2px">총 자산</div><div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmtKRW(totalA)}</div><div style="font-size:10px;color:var(--sub);margin-top:2px">${S.accounts.filter(a=>a.active!==false).length}개 계좌</div></div>
+</div>
+</div>`;})()}
 <div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('chart',16)} 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>프로젝트: ${S.projects.length}개<br>데일리 로그: ${Object.keys(S.daily||{}).length}일<br>계좌: ${S.accounts.length}개<br>거래 내역: ${S.txs.length}건<br>저축 목표: ${S.goals.length}개<br>일정: ${S.events.length}개<br>정기 항목: ${S.subs.length}개<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4 style="display:flex;align-items:center;gap:6px">${ic('warn',14)} 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
 
 function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
-// 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더)
+// 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더/검색)
 S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
+S.infoSearch='';S.infoTagFilter='';S.prjSearch='';S.txSearch='';
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 // 캘린더 탭 진입 시 — 일간 뷰 + 오늘 날짜로
 if(S.tab==='calendar'){S.calView='day';S.cs=fD(new Date());}
@@ -2528,6 +2601,11 @@ document.querySelectorAll('[data-dlr]').forEach(ta=>{ta.onchange=()=>{const date
 document.querySelectorAll('[data-mov]').forEach(b=>b.onclick=()=>{S.moView=b.dataset.mov;S.moAccountId=null;S.txCatFilter=null;R();});
 document.querySelectorAll('[data-momn]').forEach(b=>b.onclick=()=>{const ym=curMonth();const[y,m]=ym.split('-').map(Number);const d=new Date(y,m-1+parseInt(b.dataset.momn),1);S.moMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');R();});
 document.querySelectorAll('[data-txcatf]').forEach(b=>b.onclick=()=>{S.txCatFilter=b.dataset.txcatf||null;R();});
+// 거래 검색
+const txSearchIn=document.getElementById('txSearchIn');if(txSearchIn){
+let txTimer=null;
+txSearchIn.addEventListener('input',(ev)=>{S.txSearch=ev.target.value;clearTimeout(txTimer);txTimer=setTimeout(()=>{R();setTimeout(()=>{const el=document.getElementById('txSearchIn');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},20);},350);});}
+const txSearchClear=document.getElementById('txSearchClear');if(txSearchClear)txSearchClear.onclick=()=>{S.txSearch='';R();};
 document.querySelectorAll('[data-acopen]').forEach(b=>b.onclick=()=>{S.moAccountId=b.dataset.acopen;S.moView='account-detail';navPush(()=>{S.moView='accounts';S.moAccountId=null;});R();});
 document.querySelectorAll('[data-moback]').forEach(b=>b.onclick=()=>{history.back();});
 document.querySelectorAll('[data-acedit]').forEach(b=>b.onclick=()=>{const a=accountById(b.dataset.acedit);if(!a)return;S.acForm={...a};S.eacId=a.id;S.sac2=true;navPush(()=>{S.sac2=false;S.eacId=null;});R();});
@@ -2740,6 +2818,12 @@ const cjb=document.getElementById('cjb');if(cjb)cjb.onclick=()=>{history.back();
 const aib=document.getElementById('aib');if(aib)aib.onclick=()=>{const defCat=S.aCat&&S.aCat!=='__uncat__'?S.aCat:(S.cats[0]?S.cats[0].id:'');S.inf={title:'',content:'',category:defCat,url:'',tags:''};S.eiid=null;S.pf=[];S.sif=true;navPush(()=>{S.sif=false;S.pf=[];});R();};
 document.querySelectorAll('[data-ei]').forEach(b=>b.onclick=()=>{const inf=S.infos.find(x=>x.id===b.dataset.ei);if(!inf)return;S.inf={...inf};S.eiid=inf.id;S.pf=[];S.sif=true;navPush(()=>{S.sif=false;S.pf=[];});R();});
 document.querySelectorAll('[data-di]').forEach(b=>b.onclick=()=>{S.infos=S.infos.filter(x=>x.id!==b.dataset.di);delete S.files[b.dataset.di];ps();R();});
+// 아카이브 검색
+const infoSearchIn=document.getElementById('infoSearchIn');if(infoSearchIn){infoSearchIn.oninput=(ev)=>{S.infoSearch=ev.target.value;};infoSearchIn.onchange=(ev)=>{S.infoSearch=ev.target.value;R();setTimeout(()=>{const el=document.getElementById('infoSearchIn');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},20);};
+// 디바운스: 입력 멈춘 후 350ms 뒤 R
+let searchTimer=null;infoSearchIn.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{R();setTimeout(()=>{const el=document.getElementById('infoSearchIn');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},20);},350);});}
+const infoSearchClear=document.getElementById('infoSearchClear');if(infoSearchClear)infoSearchClear.onclick=()=>{S.infoSearch='';S.infoTagFilter='';R();};
+document.querySelectorAll('[data-itagf]').forEach(b=>b.onclick=()=>{const t=b.dataset.itagf;S.infoTagFilter=S.infoTagFilter===t?'':t;R();});
 document.querySelectorAll('[data-cf]').forEach(b=>{const handle=()=>{const v=b.dataset.cf;const newVal=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);if(newVal===null){S.aCat=null;}else{const wasNull=S.aCat===null;S.aCat=newVal;if(wasNull)navPush(()=>{S.aCat=null;});}R();};b.onclick=handle;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});});
 document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dc;const cat=catById(id);if(!cat)return;
 // 하위 폴더도 함께 삭제
@@ -2970,6 +3054,12 @@ dragId=null;curOver=null;});
 // 프로젝트 카테고리 관리
 // "+ 새 폴더" 카드 클릭 → 인라인 추가 모드 켜기
 const addPCatBtn=document.getElementById('addPCatBtn');if(addPCatBtn)addPCatBtn.onclick=()=>{S.newFolderKind='pcat';S.npci='';S.newPCatColor=FCOLORS[0];navPush(()=>{S.newFolderKind=null;});R();setTimeout(()=>{const el=document.getElementById('nfn');if(el)el.focus();},50);};
+
+// 프로젝트 검색
+const prjSearchIn=document.getElementById('prjSearchIn');if(prjSearchIn){
+let prjTimer=null;
+prjSearchIn.addEventListener('input',(ev)=>{S.prjSearch=ev.target.value;clearTimeout(prjTimer);prjTimer=setTimeout(()=>{R();setTimeout(()=>{const el=document.getElementById('prjSearchIn');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},20);},350);});}
+const prjSearchClear=document.getElementById('prjSearchClear');if(prjSearchClear)prjSearchClear.onclick=()=>{S.prjSearch='';R();};
 // 인라인 추가 모드 — 색상 선택
 document.querySelectorAll('[data-npcc]').forEach(b=>b.onclick=()=>{S.newPCatColor=b.dataset.npcc;R();});
 // 인라인 추가 모드 — 이름 입력
