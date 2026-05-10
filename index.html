@@ -436,7 +436,7 @@ a{color:var(--blue);text-decoration:none;}
 <div id="app"></div>
 <input type="file" id="gfi" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.hwp" style="display:none">
 <script>
-const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc',dl:'bw-dl',ac:'bw-ac',tx:'bw-tx',gl:'bw-gl',ev:'bw-ev'};
+const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc',dl:'bw-dl',ac:'bw-ac',tx:'bw-tx',gl:'bw-gl',ev:'bw-ev',sub:'bw-sub'};
 
 // ── 단색 SVG 아이콘 헬퍼 ──
 // 모든 아이콘은 currentColor 스트로크 사용. 호출: ic('lock', 16)
@@ -542,9 +542,114 @@ function migrateTx(raw){if(!raw)return[];return raw.map(t=>({id:t.id||uid(),date
 function fmtKRW(n){if(n==null||isNaN(n))return'0원';const sign=n<0?'-':'';const abs=Math.abs(Math.round(n));return sign+abs.toLocaleString('ko-KR')+'원';}
 function fmtKRWShort(n){if(n==null||isNaN(n))return'0';const abs=Math.abs(Math.round(n));const sign=n<0?'-':'';if(abs>=100000000)return sign+(abs/100000000).toFixed(1).replace(/\.0$/,'')+'억';if(abs>=10000)return sign+(abs/10000).toFixed(1).replace(/\.0$/,'')+'만';return sign+abs.toLocaleString('ko-KR');}
 
+// 금액 입력칸용 — 숫자에 천 단위 콤마 (input value 표시용)
+function fmtAmtInput(n){if(n==null||n==='')return'';const num=parseFloat(n);if(isNaN(num))return'';return Math.abs(Math.round(num)).toLocaleString('ko-KR');}
+// 콤마 들어간 문자열 → 숫자
+function parseAmt(s){if(!s)return 0;return parseFloat(String(s).replace(/[^\d.-]/g,''))||0;}
+// 입력 중 자동으로 콤마 추가 (input 이벤트에 바인딩)
+function setupAmtInput(el){if(!el)return;
+const reformat=()=>{const cursor=el.selectionStart;const oldLen=el.value.length;
+const num=parseAmt(el.value);el.value=num?num.toLocaleString('ko-KR'):'';
+// 커서 위치 보정 (오른쪽 끝 기준이 아닌 자연스럽게)
+const newLen=el.value.length;const newPos=Math.max(0,cursor+(newLen-oldLen));
+try{el.setSelectionRange(newPos,newPos);}catch{}};
+el.addEventListener('input',reformat);
+// 초기 포매팅
+if(el.value)reformat();}
+
 // ── 캘린더 사용자 이벤트 (어디에도 속하지 않는 단일 일정) ──
 // {id, date, title, type:'event', color, memo}
 function migrateEvents(raw){if(!raw)return[];return raw.map(e=>({id:e.id||uid(),date:e.date||'',title:e.title||'',color:e.color||'#337EA9',memo:e.memo||''}));}
+
+// ── 정기구독·고정비 ──
+// {id, name, amount, cycle:'monthly'|'yearly', cycleDay(1-31), cycleMonth(1-12, yearly만), startDate, accountId, category, type:'expense'|'income', active, memo, lastGeneratedDate}
+function migrateSubs(raw){if(!raw)return[];return raw.map(s=>({
+id:s.id||uid(),
+name:s.name||'',
+amount:typeof s.amount==='number'?s.amount:0,
+cycle:s.cycle||'monthly',
+cycleDay:s.cycleDay||1,
+cycleMonth:s.cycleMonth||1,
+startDate:s.startDate||fD(new Date()),
+accountId:s.accountId||'',
+category:s.category||'구독',
+type:s.type||'expense',
+active:s.active!==false,
+memo:s.memo||'',
+lastGeneratedDate:s.lastGeneratedDate||''
+}));}
+
+// 다음 결제일 계산 — 오늘 기준
+function nextChargeDate(sub){if(!sub.active)return null;
+const today=new Date();today.setHours(0,0,0,0);
+if(sub.cycle==='monthly'){
+const day=Math.min(sub.cycleDay||1,28); // 안전하게 28일까지만 (말일 처리는 별도)
+let d=new Date(today.getFullYear(),today.getMonth(),sub.cycleDay||1);
+// 말일 보정: cycleDay가 31인데 그달이 30일이면 30일
+const lastDayOfMonth=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+d=new Date(today.getFullYear(),today.getMonth(),Math.min(sub.cycleDay||1,lastDayOfMonth));
+if(d<today){const next=new Date(today.getFullYear(),today.getMonth()+1,1);const lastNext=new Date(next.getFullYear(),next.getMonth()+1,0).getDate();d=new Date(next.getFullYear(),next.getMonth(),Math.min(sub.cycleDay||1,lastNext));}
+return fD(d);}
+if(sub.cycle==='yearly'){
+const m=(sub.cycleMonth||1)-1;
+const lastDayY=new Date(today.getFullYear(),m+1,0).getDate();
+let d=new Date(today.getFullYear(),m,Math.min(sub.cycleDay||1,lastDayY));
+if(d<today){const lastDayY2=new Date(today.getFullYear()+1,m+1,0).getDate();d=new Date(today.getFullYear()+1,m,Math.min(sub.cycleDay||1,lastDayY2));}
+return fD(d);}
+return null;}
+
+// 시작일부터 오늘까지 도래한 결제일 모두 (lastGeneratedDate 이후만)
+function pendingChargeDates(sub){if(!sub.active)return[];
+const today=new Date();today.setHours(0,0,0,0);
+const start=pD(sub.startDate);if(!start)return[];
+const lastGen=sub.lastGeneratedDate?pD(sub.lastGeneratedDate):null;
+const dates=[];
+if(sub.cycle==='monthly'){
+let cur=new Date(start.getFullYear(),start.getMonth(),Math.min(sub.cycleDay||1,new Date(start.getFullYear(),start.getMonth()+1,0).getDate()));
+// start보다 cycleDay가 작으면 다음달부터
+if(cur<start)cur=new Date(start.getFullYear(),start.getMonth()+1,Math.min(sub.cycleDay||1,new Date(start.getFullYear(),start.getMonth()+2,0).getDate()));
+while(cur<=today){
+const ds=fD(cur);
+if(!lastGen||cur>lastGen)dates.push(ds);
+const ny=cur.getFullYear(),nm=cur.getMonth()+1;
+const lastDay=new Date(ny,nm+1,0).getDate();
+cur=new Date(ny,nm,Math.min(sub.cycleDay||1,lastDay));}
+}else if(sub.cycle==='yearly'){
+const m=(sub.cycleMonth||1)-1;
+let cur=new Date(start.getFullYear(),m,Math.min(sub.cycleDay||1,new Date(start.getFullYear(),m+1,0).getDate()));
+if(cur<start)cur=new Date(start.getFullYear()+1,m,Math.min(sub.cycleDay||1,new Date(start.getFullYear()+1,m+1,0).getDate()));
+while(cur<=today){
+const ds=fD(cur);
+if(!lastGen||cur>lastGen)dates.push(ds);
+cur=new Date(cur.getFullYear()+1,m,Math.min(sub.cycleDay||1,new Date(cur.getFullYear()+1,m+1,0).getDate()));}}
+return dates;}
+
+// 자동으로 결제일이 도래한 거래 생성 (앱 진입 시 호출)
+function generateSubTransactions(){let count=0;
+S.subs.forEach(sub=>{if(!sub.active)return;
+const dates=pendingChargeDates(sub);
+if(!dates.length)return;
+dates.forEach(ds=>{
+// 기존 거래에 이미 있으면 skip (제목+날짜+금액 동일 = 같은 거래로 간주)
+const dup=S.txs.some(t=>t.date===ds&&t.title===sub.name&&t.amount===sub.amount&&t.fixed);
+if(dup)return;
+const sign=sub.type==='income'?1:-1;
+S.txs.push({id:uid(),date:ds,title:sub.name,type:sub.type,amount:sub.amount,accountId:sub.accountId,category:sub.category||'구독',pay:'card',fixed:true,memo:sub.memo||''});
+// 잔액 반영
+S.accounts=S.accounts.map(a=>a.id===sub.accountId?{...a,balance:(a.balance||0)+sign*sub.amount}:a);
+count++;});
+// 마지막 생성일 갱신
+sub.lastGeneratedDate=dates[dates.length-1];});
+return count;}
+
+// 이번 달 고정비 합계 (월간 + 이번달 결제 yearly)
+function monthlyFixedSum(ym){
+let sum=0;
+S.subs.filter(s=>s.active).forEach(s=>{
+if(s.cycle==='monthly')sum+=s.type==='income'?-s.amount:s.amount;
+else if(s.cycle==='yearly'){const[y,m]=ym.split('-').map(Number);if(s.cycleMonth===m)sum+=s.type==='income'?-s.amount:s.amount;}
+});
+return sum;}
 // 캘린더 이벤트 색상 팔레트 (노션 톤)
 const EVENT_COLORS=['#337EA9','#0F7B6C','#9065B0','#D9730D','#E03E3E','#787774','#9F6B53','#CB912F'];
 // 통합 일정 소스 — 특정 날짜의 모든 이벤트 모으기
@@ -706,9 +811,14 @@ sev:false,           // 이벤트 추가/수정 모달
 eevId:null,
 evForm:{date:'',title:'',color:'#337EA9',memo:''},
 // 새 폴더 추가 모달 ('pcat' | 'cat' | null)
-newFolderKind:null
+newFolderKind:null,
+// ── 정기구독·고정비
+subs:migrateSubs(ld(K.sub,null)),
+ssub:false,          // 정기구독 추가/수정 모달
+esubId:null,
+subForm:{name:'',amount:0,cycle:'monthly',cycleDay:1,cycleMonth:1,startDate:'',accountId:'',category:'구독',type:'expense',active:true,memo:''}
 };
-function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);idbSave(S.files);}
+function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);sv(K.sub,S.subs);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
 function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -737,7 +847,7 @@ a.innerHTML=`<div class="topbar"><h1>Brainy Workplace</h1><div class="right"><sp
 <div class="sec ${S.tab==='calendar'?'active':''}">${rCl()}</div>
 <div class="sec ${S.tab==='money'?'active':''}">${rMo()}</div>
 <div class="sec ${S.tab==='settings'?'active':''}">${rSt()}</div>
-</main></div>${rBt()}${S.sjf?rJM():''}${S.sif?rIM():''}${S.sprj?rPrM():''}${S.sms?rMsM():''}${S.msAssignTaskId?rMsAssignM():''}${S.sretro?rRetroM():''}${S.todoEditId?rTodoM():''}${S.sac2?rAcM():''}${S.stx?rTxM():''}${S.sgl?rGlM():''}${S.spri?rPriM():''}${S.sev?rEvM():''}${S.newFolderKind?rNewFolderM():''}${S.prev?rPv():''}`;
+</main></div>${rBt()}${S.sjf?rJM():''}${S.sif?rIM():''}${S.sprj?rPrM():''}${S.sms?rMsM():''}${S.msAssignTaskId?rMsAssignM():''}${S.sretro?rRetroM():''}${S.todoEditId?rTodoM():''}${S.sac2?rAcM():''}${S.stx?rTxM():''}${S.sgl?rGlM():''}${S.spri?rPriM():''}${S.sev?rEvM():''}${S.newFolderKind?rNewFolderM():''}${S.ssub?rSubM():''}${S.prev?rPv():''}`;
 bEv();}
 
 function rLk(){const dots=Array.from({length:4},(_,i)=>`<div class="pin-dot ${S.pinErr?'error':i<S.pin.length?'filled':''}"></div>`).join('');
@@ -1346,19 +1456,21 @@ function totalAssets(){return S.accounts.filter(a=>a.active!==false).reduce((s,a
 function accountById(id){return S.accounts.find(a=>a.id===id);}
 
 function rMo(){
-const tabs=[{k:'home',l:'홈'},{k:'accounts',l:'계좌'},{k:'txs',l:'거래'},{k:'goals',l:'GOAL'}];
+const tabs=[{k:'home',l:'홈'},{k:'accounts',l:'계좌'},{k:'txs',l:'거래'},{k:'goals',l:'GOAL'},{k:'subs',l:'정기'}];
 let body='';
 if(S.moView==='account-detail')body=rMoAccountDetail();
 else if(S.moView==='goal-detail')body=rMoGoalDetail();
 else if(S.moView==='accounts')body=rMoAccounts();
 else if(S.moView==='txs')body=rMoTxs();
 else if(S.moView==='goals')body=rMoGoals();
+else if(S.moView==='subs')body=rMoSubs();
 else body=rMoHome();
 
 // 서브탭에 따라 헤더 + 버튼 다르게
 let addBtn='';
 if(S.moView==='accounts'||S.moView==='account-detail')addBtn=`<button class="bp" id="moAddBtn" data-moadd="account" style="padding:8px 14px">+ 계좌</button>`;
 else if(S.moView==='goals'||S.moView==='goal-detail')addBtn=`<button class="bp" id="moAddBtn" data-moadd="goal" style="padding:8px 14px">+ 목표</button>`;
+else if(S.moView==='subs')addBtn=`<button class="bp" id="moAddBtn" data-moadd="sub" style="padding:8px 14px">+ 정기</button>`;
 else addBtn=`<button class="bp" id="moAddBtn" data-moadd="tx" style="padding:8px 14px">+ 거래</button>`;
 
 return`<div class="sh"><h2>자산관리</h2>${addBtn}</div>
@@ -1425,6 +1537,12 @@ ${catRows.map(([cat,v])=>{const pct=Math.round(v/totalExp*100);return`<div style
 
 ${kindRows.length?`<div class="mo-section-h"><h3>자산 분포</h3></div>
 ${kindRows.map(([k,v])=>{const pct=Math.round(v/totalPos*100);const c=assetKindColor(k);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:${c};font-weight:500">${assetKindLabel(k)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;}).join('')}`:''}
+
+${(()=>{const activeSubs=(S.subs||[]).filter(s=>s.active);if(!activeSubs.length)return'';const monthlyTotal=monthlyFixedSum(ym);return`<div class="mo-section-h"><h3>이번 달 고정비</h3><button class="be" data-mov="subs">전체 보기</button></div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+<span style="font-size:12px;color:var(--sub)">활성 ${activeSubs.length}건</span>
+<span style="font-size:15px;font-weight:600;color:${monthlyTotal>=0?'#E03E3E':'#0F7B6C'}">${monthlyTotal>=0?'-':'+'}${fmtKRW(Math.abs(monthlyTotal))}</span>
+</div>`;})()}
 
 ${uncat.length?`<div style="background:#FFF8E1;border:1px solid #F5C242;border-radius:10px;padding:10px 14px;margin:14px 0;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px"><span style="color:#CB912F;display:inline-flex">${ic('warn',14)}</span><span><strong>미분류 거래 ${uncat.length}건</strong> — 거래 탭에서 정리해주세요</span></div>`:''}
 
@@ -1549,7 +1667,7 @@ return`<div class="mo" id="acMo"><div class="mb">
 <div class="fg"><label>자산 구분</label><select id="acK">${ASSET_KINDS.map(a=>`<option value="${a.k}" ${f.kind===a.k?'selected':''}>${a.l}</option>`).join('')}</select></div>
 <div class="fg"><label>금융기관</label><select id="acB">${BANKS.map(b=>`<option value="${b}" ${f.bank===b?'selected':''}>${b}</option>`).join('')}</select></div>
 <div class="fg"><label>통화</label><select id="acC"><option value="KRW" ${f.currency==='KRW'?'selected':''}>KRW (원)</option><option value="USD" ${f.currency==='USD'?'selected':''}>USD (달러)</option><option value="기타" ${f.currency==='기타'?'selected':''}>기타</option></select></div>
-<div class="fg"><label>현재 잔액</label><div class="amt-input"><input id="acBl" type="number" inputmode="numeric" value="${f.balance||0}"><span class="unit">원</span></div></div>
+<div class="fg"><label>현재 잔액</label><div class="amt-input"><input id="acBl" type="text" inputmode="numeric" value="${fmtAmtInput(f.balance)}"><span class="unit">원</span></div></div>
 <div class="fg"><label>메모</label><input id="acM" value="${e(f.memo)}" placeholder="선택사항"></div>
 <div class="fg"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="acA" ${f.active!==false?'checked':''} style="width:auto"> 활성 (해지된 계좌는 체크 해제)</label></div>
 <div class="fb"><button class="sv" id="acSv">저장</button><button class="cn" id="acCn">취소</button></div>
@@ -1564,7 +1682,7 @@ return`<div class="mo" id="txMo"><div class="mb" style="max-height:90vh">
 <div class="tx-type-pick">
 ${TX_TYPES.map(t=>`<button class="${f.type===t.k?'sel':''}" data-txtype="${t.k}">${t.l}</button>`).join('')}
 </div></div>
-<div class="fg"><label>금액 *</label><div class="amt-input"><input id="txA" type="number" inputmode="numeric" value="${f.amount||''}" placeholder="0"><span class="unit">원</span></div></div>
+<div class="fg"><label>금액 *</label><div class="amt-input"><input id="txA" type="text" inputmode="numeric" value="${fmtAmtInput(f.amount)}" placeholder="0"><span class="unit">원</span></div></div>
 <div class="fg"><label>내역</label><input id="txT" value="${e(f.title)}" placeholder="예: 점심 - 김밥천국"></div>
 <div class="fg"><label>날짜</label><input type="date" id="txD" value="${f.date||fD(new Date())}"></div>
 <div class="fg"><label>계좌</label><select id="txAc">${!accs.length?'<option value="">계좌 먼저 추가</option>':''}${accs.map(a=>`<option value="${a.id}" ${f.accountId===a.id?'selected':''}>${e(a.name)} (${e(a.bank)})</option>`).join('')}</select></div>
@@ -1671,7 +1789,7 @@ function rGlM(){const f=S.glForm;const accs=S.accounts.filter(a=>a.active!==fals
 return`<div class="mo" id="glMo"><div class="mb" style="max-height:90vh">
 <h3>${S.eglId?'GOAL 수정':'저축 목표 추가'}</h3>
 <div class="fg"><label>목표명 *</label><input id="glN" value="${e(f.name)}" placeholder="예: 맥북 에어 구매"></div>
-<div class="fg"><label>목표 금액 *</label><div class="amt-input"><input id="glA" type="number" inputmode="numeric" value="${f.targetAmount||''}" placeholder="0"><span class="unit">원</span></div></div>
+<div class="fg"><label>목표 금액 *</label><div class="amt-input"><input id="glA" type="text" inputmode="numeric" value="${fmtAmtInput(f.targetAmount)}" placeholder="0"><span class="unit">원</span></div></div>
 <div class="fg"><label>목표일 (선택)</label><input type="date" id="glD" value="${f.targetDate}"></div>
 <div class="fg"><label>우선순위</label><select id="glP">${pris.map(p=>`<option value="${p}" ${f.priority===p?'selected':''}>${p}</option>`).join('')}</select></div>
 <div class="fg"><label>연결 계좌 (현재 모은 금액 = 선택한 계좌 잔액 합)</label>
@@ -1830,6 +1948,84 @@ return`<div class="mo" id="newFolderMo"><div class="mb" style="max-width:340px">
 </div>
 <div class="fb"><button class="sv" id="nfSv">추가</button><button class="cn" id="nfCn">취소</button></div>
 </div></div>`;}
+
+// ── 정기구독·고정비 화면 ──
+function rMoSubs(){
+const subs=S.subs||[];
+if(!subs.length)return`<div class="tx-empty" style="padding:40px 24px">정기구독이 없어요.<br>+ 정기 버튼으로 추가해보세요<br><br><span style="font-size:11px;color:var(--sub)">예: 넷플릭스 / 통신비 / 월세</span></div>`;
+
+const today=new Date();today.setHours(0,0,0,0);
+const active=subs.filter(s=>s.active);
+const paused=subs.filter(s=>!s.active);
+
+// 이번 달 합계
+const ym=fD(today).substring(0,7);
+const monthlyTotal=monthlyFixedSum(ym);
+
+// 다음 결제일순 정렬
+const sortedActive=[...active].sort((a,b)=>{const an=nextChargeDate(a);const bn=nextChargeDate(b);if(!an)return 1;if(!bn)return -1;return an.localeCompare(bn);});
+
+let html=`<div class="mo-total" style="padding:14px 16px;margin-bottom:14px">
+<div class="lab">이번 달 고정비 합계</div>
+<div class="val">${monthlyTotal>=0?'-':'+'}${fmtKRW(Math.abs(monthlyTotal))}</div>
+<div class="sub"><span>활성 ${active.length}건${paused.length?' · 일시중지 '+paused.length:''}</span></div>
+</div>`;
+
+if(sortedActive.length){html+=`<div class="mo-section-h"><h3>활성 (${sortedActive.length})</h3></div>`+sortedActive.map(s=>renderSubCard(s,today)).join('');}
+if(paused.length){html+=`<div class="mo-section-h"><h3>일시중지 (${paused.length})</h3></div>`+paused.map(s=>renderSubCard(s,today)).join('');}
+return html;}
+
+function renderSubCard(s,today){
+const acc=accountById(s.accountId);
+const nd=nextChargeDate(s);
+const dd=nd?dDayText(nd):null;
+const cycleLabel=s.cycle==='monthly'?`매월 ${s.cycleDay}일`:`매년 ${s.cycleMonth}월 ${s.cycleDay}일`;
+const sign=s.type==='income'?'+':'-';
+const cls=s.type==='income'?'income':'expense';
+return`<div class="ac-card" data-subedit="${s.id}" style="${!s.active?'opacity:.55':''}border-left-color:${s.type==='income'?'#0F7B6C':'#E03E3E'}">
+<div class="ac-card-head">
+<div style="flex:1;min-width:0">
+<div class="ac-card-name">${e(s.name)}${!s.active?' <span style="font-size:10px;color:var(--sub)">(중지)</span>':''}</div>
+<div class="ac-card-meta">
+<span>${cycleLabel}</span>
+${acc?`<span>·</span><span>${e(acc.name)}</span>`:''}
+${s.active&&nd?`<span>·</span><span>다음: ${nd}</span>`:''}
+${dd&&s.active?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}
+</div>
+</div>
+<div class="ac-card-bal" style="color:${s.type==='income'?'#0F7B6C':'var(--text)'}">${sign}${fmtKRWShort(s.amount)}</div>
+</div>
+${s.memo?`<div style="font-size:11px;color:var(--sub);margin-top:6px">${e(s.memo)}</div>`:''}
+</div>`;}
+
+// 정기구독 추가/수정 모달
+function rSubM(){const f=S.subForm;
+const accs=S.accounts.filter(a=>a.active!==false);
+return`<div class="mo" id="subMo"><div class="mb" style="max-height:90vh">
+<h3>${S.esubId?'정기 항목 수정':'정기 항목 추가'}</h3>
+<div class="fg"><label>이름 *</label><input id="subN" value="${e(f.name)}" placeholder="예: 넷플릭스, 월세, 통신비"></div>
+<div class="fg"><label>금액 *</label><div class="amt-input"><input id="subA" type="text" inputmode="numeric" value="${fmtAmtInput(f.amount)}" placeholder="0"><span class="unit">원</span></div></div>
+<div class="fg"><label>유형</label>
+<div class="tx-type-pick" style="grid-template-columns:1fr 1fr">
+<button class="${f.type==='expense'?'sel':''}" data-subtp="expense">지출</button>
+<button class="${f.type==='income'?'sel':''}" data-subtp="income">수입</button>
+</div>
+</div>
+<div class="fg"><label>주기</label>
+<div class="tx-type-pick" style="grid-template-columns:1fr 1fr">
+<button class="${f.cycle==='monthly'?'sel':''}" data-subcy="monthly">매월</button>
+<button class="${f.cycle==='yearly'?'sel':''}" data-subcy="yearly">매년</button>
+</div>
+</div>
+${f.cycle==='yearly'?`<div class="fg"><label>결제 월</label><select id="subMon">${Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${f.cycleMonth===m?'selected':''}>${m}월</option>`).join('')}</select></div>`:''}
+<div class="fg"><label>결제일 (1-31)</label><input id="subDy" type="number" inputmode="numeric" min="1" max="31" value="${f.cycleDay||1}"></div>
+<div class="fg"><label>시작일 *</label><input type="date" id="subSt" value="${f.startDate||fD(new Date())}"></div>
+<div class="fg"><label>결제 계좌 *</label><select id="subAc">${!accs.length?'<option value="">계좌 먼저 추가</option>':''}${accs.map(a=>`<option value="${a.id}" ${f.accountId===a.id?'selected':''}>${e(a.name)} (${e(a.bank)})</option>`).join('')}</select></div>
+<div class="fg"><label>카테고리</label><select id="subCt">${TX_CATS.map(c=>`<option value="${c}" ${f.category===c?'selected':''}>${e(c)}</option>`).join('')}</select></div>
+<div class="fg"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="subAct" ${f.active!==false?'checked':''} style="width:auto"> 활성 (해지/일시중지하면 체크 해제)</label></div>
+<div class="fg"><label>메모</label><input id="subMm" value="${e(f.memo)}" placeholder="선택사항"></div>
+<div class="fb"><button class="sv" id="subSv">저장</button><button class="cn" id="subCn">취소</button>${S.esubId?`<button class="cn" id="subDel" style="background:#FDECEA;color:var(--danger)">삭제</button>`:''}</div>
+</div></div>`;}
 // 통합 이벤트 수집 — 특정 날짜의 모든 일정
 // 반환: [{type, label, color, sourceId?, source?}]
 function gEv(ds){const ev=[];
@@ -1867,13 +2063,13 @@ function rSt(){return`<div class="sh"><h2>설정</h2></div><div class="stc"><h3 
 <input type="file" id="bkImp" accept=".json" style="display:none">
 ${S.bkMsg?`<div class="smg ${S.bkMsg.o?'ok':'er'}">${S.bkMsg.t}</div>`:''}
 <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">• 내보내기: JSON 파일로 다운로드됩니다<br>• 불러오기: 기존 데이터를 덮어씁니다<br>• 첨부파일은 IndexedDB에 저장 (용량 걱정 없음)</div></div>
-<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('chart',16)} 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>프로젝트: ${S.projects.length}개<br>데일리 로그: ${Object.keys(S.daily||{}).length}일<br>계좌: ${S.accounts.length}개<br>거래 내역: ${S.txs.length}건<br>저축 목표: ${S.goals.length}개<br>일정: ${S.events.length}개<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4 style="display:flex;align-items:center;gap:6px">${ic('warn',14)} 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
+<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic('chart',16)} 데이터 현황</h3><div style="font-size:13px;color:var(--sub);line-height:2">할 일: ${S.todos.length}개<br>입사지원: ${S.jobs.length}개<br>아카이브: ${S.infos.length}개<br>카테고리: ${S.cats.length}개<br>프로젝트: ${S.projects.length}개<br>데일리 로그: ${Object.keys(S.daily||{}).length}일<br>계좌: ${S.accounts.length}개<br>거래 내역: ${S.txs.length}건<br>저축 목표: ${S.goals.length}개<br>일정: ${S.events.length}개<br>정기 항목: ${S.subs.length}개<br>첨부파일: ${Object.values(S.files).flat().length}개</div></div><div class="dz"><h4 style="display:flex;align-items:center;gap:6px">${ic('warn',14)} 데이터 초기화</h4><p style="font-size:12px;color:var(--sub);margin-bottom:10px">모든 데이터가 삭제됩니다.</p><button id="rst">전체 데이터 삭제</button></div>`;}
 
 function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
 // 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더)
-S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 // navStack 비움 + 가드 이력만 유지 (replace로 교체)
@@ -1899,7 +2095,7 @@ R();});
 const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{
 S.locked=true;S.pin='';sessionStorage.removeItem('bw-auth');
 // 깊은 상태 모두 리셋
-S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;S.moView='home';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
 R();};
@@ -1936,6 +2132,9 @@ document.querySelectorAll('[data-txedit]').forEach(b=>b.onclick=()=>{const t=S.t
 document.querySelectorAll('[data-moadd]').forEach(b=>b.onclick=()=>{const kind=b.dataset.moadd;
 if(kind==='account'){S.acForm={name:'',kind:'checking',bank:'기타',currency:'KRW',balance:0,memo:'',active:true};S.eacId=null;S.sac2=true;navPush(()=>{S.sac2=false;S.eacId=null;});}
 else if(kind==='goal'){S.glForm={name:'',targetAmount:0,targetDate:'',priority:'P1',status:'active',accountIds:[],memo:''};S.eglId=null;S.sgl=true;navPush(()=>{S.sgl=false;S.eglId=null;});}
+else if(kind==='sub'){if(!S.accounts.filter(a=>a.active!==false).length){alert('먼저 계좌를 추가해주세요. 계좌 탭으로 이동합니다.');S.moView='accounts';R();return;}
+const defAcc=S.accounts.filter(a=>a.active!==false)[0];
+S.subForm={name:'',amount:0,cycle:'monthly',cycleDay:1,cycleMonth:1,startDate:fD(new Date()),accountId:defAcc.id,category:'구독',type:'expense',active:true,memo:''};S.esubId=null;S.ssub=true;navPush(()=>{S.ssub=false;S.esubId=null;});}
 else if(kind==='tx'){if(!S.accounts.filter(a=>a.active!==false).length){alert('먼저 계좌를 추가해주세요. 계좌 탭으로 이동합니다.');S.moView='accounts';R();return;}
 const defAcc=S.accounts.filter(a=>a.active!==false)[0];
 S.txForm={date:fD(new Date()),title:'',type:'expense',amount:0,accountId:defAcc.id,category:'식비',pay:'card',fixed:false,memo:''};S.etxId=null;S.stx=true;navPush(()=>{S.stx=false;S.etxId=null;});}
@@ -1943,8 +2142,9 @@ R();});
 
 // 계좌 모달
 const acMo=document.getElementById('acMo');if(acMo)acMo.onclick=(ev)=>{if(ev.target===acMo){history.back();}};
+setupAmtInput(document.getElementById('acBl'));
 const acSv=document.getElementById('acSv');if(acSv)acSv.onclick=()=>{
-const f={name:document.getElementById('acN').value.trim(),kind:document.getElementById('acK').value,bank:document.getElementById('acB').value,currency:document.getElementById('acC').value,balance:parseFloat(document.getElementById('acBl').value)||0,memo:document.getElementById('acM').value,active:document.getElementById('acA').checked};
+const f={name:document.getElementById('acN').value.trim(),kind:document.getElementById('acK').value,bank:document.getElementById('acB').value,currency:document.getElementById('acC').value,balance:parseAmt(document.getElementById('acBl').value),memo:document.getElementById('acM').value,active:document.getElementById('acA').checked};
 if(!f.name){alert('계좌명을 입력해주세요');return;}
 if(S.eacId){S.accounts=S.accounts.map(a=>a.id===S.eacId?{...a,...f}:a);}else{S.accounts.push({id:uid(),...f});}
 ps();history.back();};
@@ -1952,11 +2152,12 @@ const acCn=document.getElementById('acCn');if(acCn)acCn.onclick=()=>{history.bac
 
 // 거래 모달
 const txMo=document.getElementById('txMo');if(txMo)txMo.onclick=(ev)=>{if(ev.target===txMo){history.back();}};
+setupAmtInput(document.getElementById('txA'));
 document.querySelectorAll('[data-txtype]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-txtype]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');S.txForm={...S.txForm,type:b.dataset.txtype};});
 const txSv=document.getElementById('txSv');if(txSv)txSv.onclick=()=>{
 // 모달의 type은 칩 클릭으로만 갱신되므로 sel 클래스에서 읽기
 const selType=(document.querySelector('[data-txtype].sel')||{}).dataset?.txtype||S.txForm.type||'expense';
-const f={date:document.getElementById('txD').value||fD(new Date()),title:document.getElementById('txT').value.trim(),type:selType,amount:Math.abs(parseFloat(document.getElementById('txA').value)||0),accountId:document.getElementById('txAc').value,category:document.getElementById('txCt').value,pay:document.getElementById('txP').value,fixed:document.getElementById('txF').checked,memo:document.getElementById('txM').value};
+const f={date:document.getElementById('txD').value||fD(new Date()),title:document.getElementById('txT').value.trim(),type:selType,amount:Math.abs(parseAmt(document.getElementById('txA').value)),accountId:document.getElementById('txAc').value,category:document.getElementById('txCt').value,pay:document.getElementById('txP').value,fixed:document.getElementById('txF').checked,memo:document.getElementById('txM').value};
 if(!f.amount){alert('금액을 입력해주세요');return;}
 if(!f.accountId){alert('계좌를 선택해주세요');return;}
 // 잔액 자동 반영
@@ -1992,6 +2193,7 @@ R();});
 
 // GOAL 모달
 const glMo=document.getElementById('glMo');if(glMo)glMo.onclick=(ev)=>{if(ev.target===glMo){history.back();}};
+setupAmtInput(document.getElementById('glA'));
 // 계좌 체크박스 토글 (UI 표시용 + form 갱신)
 document.querySelectorAll('[data-glacc]').forEach(cb=>cb.onchange=()=>{
 const ids=Array.from(document.querySelectorAll('[data-glacc]:checked')).map(x=>x.value);
@@ -1999,7 +2201,7 @@ S.glForm={...S.glForm,accountIds:ids};
 // 라벨 sel 클래스 갱신
 document.querySelectorAll('.gl-acc-pick label').forEach(lb=>{const cb2=lb.querySelector('input');if(cb2.checked)lb.classList.add('sel');else lb.classList.remove('sel');});});
 const glSv=document.getElementById('glSv');if(glSv)glSv.onclick=()=>{
-const f={name:document.getElementById('glN').value.trim(),targetAmount:parseFloat(document.getElementById('glA').value)||0,targetDate:document.getElementById('glD').value,priority:document.getElementById('glP').value,memo:document.getElementById('glM').value,accountIds:Array.from(document.querySelectorAll('[data-glacc]:checked')).map(x=>x.value)};
+const f={name:document.getElementById('glN').value.trim(),targetAmount:parseAmt(document.getElementById('glA').value),targetDate:document.getElementById('glD').value,priority:document.getElementById('glP').value,memo:document.getElementById('glM').value,accountIds:Array.from(document.querySelectorAll('[data-glacc]:checked')).map(x=>x.value)};
 if(!f.name){alert('목표명을 입력해주세요');return;}
 if(!f.targetAmount){alert('목표 금액을 입력해주세요');return;}
 if(S.eglId){S.goals=S.goals.map(g=>g.id===S.eglId?{...g,...f}:g);}else{S.goals.push({id:uid(),...f,status:'active'});}
@@ -2013,6 +2215,40 @@ if(ctx.type==='goal'){S.goals=S.goals.map(g=>g.id===id?{...g,priority:ctx.vacate
 else{S.projects=S.projects.map(p=>p.id===id?{...p,priority:ctx.vacatedPri}:p);}
 ps();history.back();});
 const priSkip=document.getElementById('priSkip');if(priSkip)priSkip.onclick=()=>{history.back();};
+
+// ── 정기구독 이벤트 ──
+document.querySelectorAll('[data-subedit]').forEach(b=>b.onclick=()=>{const s=S.subs.find(x=>x.id===b.dataset.subedit);if(!s)return;S.subForm={...s};S.esubId=s.id;S.ssub=true;navPush(()=>{S.ssub=false;S.esubId=null;});R();});
+// 모달 배경 탭
+const subMo=document.getElementById('subMo');if(subMo)subMo.onclick=(ev)=>{if(ev.target===subMo){history.back();}};
+setupAmtInput(document.getElementById('subA'));
+// 타입/주기 토글 (DOM 직접 조작 + S 갱신)
+document.querySelectorAll('[data-subtp]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-subtp]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');S.subForm={...S.subForm,type:b.dataset.subtp};});
+document.querySelectorAll('[data-subcy]').forEach(b=>b.onclick=()=>{S.subForm={...S.subForm,cycle:b.dataset.subcy};R();});  // 매월/매년 변경 시 yearly 추가 필드 토글되므로 R()
+// 저장
+const subSv=document.getElementById('subSv');if(subSv)subSv.onclick=()=>{
+const cycleSel=(document.querySelector('[data-subcy].sel')||{}).dataset?.subcy||S.subForm.cycle||'monthly';
+const typeSel=(document.querySelector('[data-subtp].sel')||{}).dataset?.subtp||S.subForm.type||'expense';
+const f={
+name:document.getElementById('subN').value.trim(),
+amount:Math.abs(parseAmt(document.getElementById('subA').value)),
+cycle:cycleSel,
+cycleDay:Math.max(1,Math.min(31,parseInt(document.getElementById('subDy').value)||1)),
+cycleMonth:cycleSel==='yearly'?(parseInt(document.getElementById('subMon').value)||1):S.subForm.cycleMonth||1,
+startDate:document.getElementById('subSt').value||fD(new Date()),
+accountId:document.getElementById('subAc').value,
+category:document.getElementById('subCt').value,
+type:typeSel,
+active:document.getElementById('subAct').checked,
+memo:document.getElementById('subMm').value
+};
+if(!f.name){alert('이름을 입력해주세요');return;}
+if(!f.amount){alert('금액을 입력해주세요');return;}
+if(!f.accountId){alert('결제 계좌를 선택해주세요');return;}
+if(S.esubId){S.subs=S.subs.map(s=>s.id===S.esubId?{...s,...f}:s);}
+else{S.subs.push({id:uid(),...f,lastGeneratedDate:''});}
+ps();history.back();};
+const subCn=document.getElementById('subCn');if(subCn)subCn.onclick=()=>{history.back();};
+const subDel=document.getElementById('subDel');if(subDel)subDel.onclick=()=>{if(!confirm('이 정기 항목을 삭제할까요? (이미 생성된 거래는 그대로 남습니다)'))return;S.subs=S.subs.filter(s=>s.id!==S.esubId);ps();history.back();};
 document.querySelectorAll('[data-wd]').forEach(b=>b.onclick=()=>{S.selDate=b.dataset.wd;S.tv='day';R();});
 document.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{S.todos=S.todos.map(t=>t.id===b.dataset.tg?{...t,done:!t.done}:t);ps();R();});
 document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{S.todos=S.todos.map(t=>t.id===b.dataset.sr?{...t,priority:!t.priority}:t);ps();R();});
@@ -2326,9 +2562,9 @@ if(confirm(`"${c.name}" 폴더를 삭제할까요?`)){S.pcats=S.pcats.filter(x=>
 });
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
 const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
-const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:6,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
+const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:7,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,subs:S.subs,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
 const bkImpLabel=document.getElementById('bkImpLabel');if(bkImpLabel)bkImpLabel.onclick=()=>{document.getElementById('bkImp').click();};
-const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
+const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.subs)S.subs=migrateSubs(data.subs);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
 // 렌더링 전에 현재 모달 폼 값 저장
@@ -2394,6 +2630,8 @@ dragId=null;curOver=null;});
   if(localStorage.getItem(K.p)===null){S.projects=migrateProjects(seedProjects());sv(K.p,S.projects);}
   // 입사지원 데이터는 있는데 'pc-job' 카테고리가 없으면 복구 (진입 경로 보호)
   if(S.jobs.length&&!pcatById('pc-job')){S.pcats=[{id:'pc-job',name:'취업',color:'#337EA9'},...S.pcats];sv(K.pc,S.pcats);}
+  // 정기구독 자동 거래 생성 (앱 진입 시 1회)
+  if(S.subs&&S.subs.length){const generated=generateSubTransactions();if(generated)ps();}
   S.ready=true;
 
   // ── 뒤로가기(popstate) 처리 ──
