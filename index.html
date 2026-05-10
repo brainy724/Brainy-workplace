@@ -588,6 +588,73 @@ return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%
 // 카테고리별 색상 (도넛에 사용)
 const CAT_COLORS=['#E03E3E','#D9730D','#CB912F','#0F7B6C','#337EA9','#9065B0','#AD1A72','#9F6B53','#787774','#0B6E99','#5A5A5A','#D44C47','#406099','#7B5C8E','#C28A56','#888888','#A0A0A0','#5C5C5C'];
 function catColor(idx){return CAT_COLORS[idx%CAT_COLORS.length];}
+
+// 자산 추이 계산 — 최근 N개월 각 월말 시점의 총자산 (거래내역을 역산)
+// 반환: [{label, value(원), ymKey}]
+function assetTrend(monthsBack){
+const today=new Date();today.setHours(0,0,0,0);
+const currentTotal=totalAssets();
+// 미래에서 과거로 한 달씩 거슬러가며 자산 역산
+// 한 달의 자산 = 다음 달 자산 - 그 달의 (수입+환급-지출-투자) 흐름
+const result=[];
+let cumNet=currentTotal;
+// 이번 달은 오늘까지의 흐름이 이미 잔액에 반영돼있음 → 이번 달 첫 자료점은 currentTotal
+result.push({label:String(today.getMonth()+1)+'월',value:currentTotal,ymKey:fD(today).substring(0,7)});
+for(let i=1;i<=monthsBack;i++){const d=new Date(today.getFullYear(),today.getMonth()-i+1,1);
+// d는 i개월 전의 다음달 1일 (=i개월 전의 말일+1)
+const dEnd=new Date(d);dEnd.setDate(dEnd.getDate()-1); // i개월 전의 말일
+const dStart=new Date(dEnd.getFullYear(),dEnd.getMonth(),1); // i개월 전의 1일
+const startStr=fD(dStart),endStr=fD(dEnd);
+// 그 달의 거래 흐름 (income/refund - expense/invest)
+const monthFlow=S.txs.filter(t=>t.date>=startStr&&t.date<=endStr).reduce((s,t)=>{
+if(t.type==='income'||t.type==='refund')return s+t.amount;
+if(t.type==='expense'||t.type==='invest')return s-t.amount;
+return s;},0);
+cumNet=cumNet-monthFlow; // 그 달 시작 시점의 자산
+result.unshift({label:String(dStart.getMonth()+1)+'월',value:cumNet,ymKey:fD(dStart).substring(0,7)});}
+return result;}
+
+// 선그래프 SVG - data: [{label, value}]
+function svgLine(data,height,color){if(!data.length)return'';
+const h=height||120,padTop=14,padBot=22,padL=8,padR=8;
+const w=300;const chartH=h-padTop-padBot;const chartW=w-padL-padR;
+const vals=data.map(d=>d.value);
+const maxV=Math.max(...vals);const minV=Math.min(...vals);
+const range=maxV-minV||1;
+// y 좌표 변환 (값이 클수록 위로)
+const xy=data.map((d,i)=>{const x=padL+(data.length===1?chartW/2:i/(data.length-1)*chartW);const y=padTop+chartH-((d.value-minV)/range)*chartH;return[x,y];});
+// 영역 채우기 (path)
+const lineColor=color||'#337EA9';
+let area=`M ${xy[0][0]} ${padTop+chartH} L ${xy.map(p=>p.join(' ')).join(' L ')} L ${xy[xy.length-1][0]} ${padTop+chartH} Z`;
+let line=`M ${xy.map(p=>p.join(' ')).join(' L ')}`;
+let dots=xy.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3" fill="${lineColor}"/>`).join('');
+let labels=data.map((d,i)=>{const x=xy[i][0];return`<text x="${x}" y="${h-6}" text-anchor="middle" font-size="9" fill="#787774">${d.label}</text>`;}).join('');
+// 마지막 점에 값 표시
+const last=data[data.length-1];const lastX=xy[xy.length-1][0],lastY=xy[xy.length-1][1];
+let lastLabel=`<text x="${lastX}" y="${Math.max(lastY-7,padTop)}" text-anchor="end" font-size="10" fill="${lineColor}" font-weight="600">${fmtKRWShort(last.value)}</text>`;
+return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+<path d="${area}" fill="${lineColor}" opacity="0.1"/>
+<path d="${line}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+${dots}${labels}${lastLabel}
+</svg>`;}
+
+// 비율 막대 (0~1 값들의 배열) - 작은 sparkline 형식
+// data: [{value 0-1, label, full?(boolean - 색칠 여부)}]
+// height: 높이, color: 막대 색상
+function svgRatioBars(data,height,color){if(!data.length)return'';
+const h=height||40,padBot=14,chartH=h-padBot,gap=1.5;
+const w=300;const barW=(w-(data.length-1)*gap)/data.length;
+let bars='';
+data.forEach((d,i)=>{const x=i*(barW+gap);
+const v=Math.max(0,Math.min(1,d.value||0));
+const barH=v*chartH;
+const opacity=d.full===false?0.18:1;
+// 배경 (전체 세로)
+bars+=`<rect x="${x}" y="0" width="${barW}" height="${chartH}" fill="${color||'#0F7B6C'}" opacity="0.08" rx="1"/>`;
+// 채워진 부분
+if(barH>0)bars+=`<rect x="${x}" y="${chartH-barH}" width="${barW}" height="${barH}" fill="${color||'#0F7B6C'}" opacity="${opacity}" rx="1"/>`;
+if(d.label)bars+=`<text x="${x+barW/2}" y="${h-3}" text-anchor="middle" font-size="8" fill="#787774">${d.label}</text>`;});
+return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${bars}</svg>`;}
 function setupAmtInput(el){if(!el)return;
 const reformat=()=>{const cursor=el.selectionStart;const oldLen=el.value.length;
 const num=parseAmt(el.value);el.value=num?num.toLocaleString('ko-KR'):'';
@@ -708,6 +775,31 @@ function goalProgress(g){const saved=goalSaved(g);const target=g.targetAmount||0
 function goalMonthsLeft(g){if(!g.targetDate)return null;const today=new Date();today.setHours(0,0,0,0);const t=pD(g.targetDate);if(!t)return null;const diff=(t-today)/(1000*60*60*24);if(diff<=0)return 0;return Math.max(0.1,Math.round(diff/30.44*10)/10);}
 // 월 필요 저축액
 function goalMonthlyNeed(g){const ml=goalMonthsLeft(g);const{remain}=goalProgress(g);if(ml==null)return null;if(ml===0)return remain;return Math.ceil(remain/ml);}
+
+// GOAL 달성 예측 — 최근 N일 동안 연결 계좌의 순증가율로 예측
+// 반환: {dailyRate, daysToGoal, expectedDate, vsTarget('on'|'late'|'early'|null), comparison}
+function goalForecast(g,daysWindow){
+const window=daysWindow||30;
+if(!g.accountIds||!g.accountIds.length)return null;
+const{remain}=goalProgress(g);
+if(remain<=0)return null;
+const today=new Date();today.setHours(0,0,0,0);
+const winStart=new Date(today);winStart.setDate(today.getDate()-window);
+const winStartStr=fD(winStart);
+// 연결 계좌의 최근 N일간 순흐름 (수입 - 지출)
+const flow=S.txs.filter(t=>g.accountIds.includes(t.accountId)&&t.date>=winStartStr).reduce((s,t)=>{
+if(t.type==='income'||t.type==='refund')return s+t.amount;
+if(t.type==='expense'||t.type==='invest')return s-t.amount;
+return s;},0);
+if(flow<=0)return{dailyRate:0,daysToGoal:null,expectedDate:null,vsTarget:null};
+const dailyRate=flow/window;
+const daysToGoal=Math.ceil(remain/dailyRate);
+const expectedDate=new Date(today);expectedDate.setDate(today.getDate()+daysToGoal);
+let vsTarget=null;let comparison=null;
+if(g.targetDate){const target=pD(g.targetDate);if(target){const diffDays=Math.round((expectedDate-target)/(1000*60*60*24));
+if(diffDays<-7)vsTarget='early';else if(diffDays>7)vsTarget='late';else vsTarget='on';
+comparison=diffDays;}}
+return{dailyRate,daysToGoal,expectedDate:fD(expectedDate),vsTarget,comparison};}
 
 // ── 우선순위 조정 모달 트리거 ──
 // 우선순위가 비었을 때 모달을 띄울지 결정 (다른 후보가 있을 때만)
@@ -1008,6 +1100,33 @@ ${todayTodos.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4p
 </div>`:`<div class="home-empty">오늘 할 일이 없어요. 잘하셨어요!</div>`}
 </div>
 
+${(()=>{
+// 최근 30일 할 일 완료 추이
+const days=[];
+for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);const ds=fD(d);
+const dayTodos=S.todos.filter(t=>t.date===ds);
+const total=dayTodos.length;const done=dayTodos.filter(t=>t.done).length;
+const ratio=total?done/total:0;
+// 라벨: 5일마다 한번 (혼잡 방지)
+const showLabel=i===0||i===29||i%5===0;
+days.push({value:ratio,label:showLabel?(i===0?'오늘':String(d.getDate())):'',full:total>0,total,done,date:ds});}
+const has=days.some(d=>d.total>0);
+if(!has)return'';
+// 통계
+const totalDone=days.reduce((s,d)=>s+d.done,0);
+const totalAll=days.reduce((s,d)=>s+d.total,0);
+const avgRate=totalAll?Math.round(totalDone/totalAll*100):0;
+// 연속 완료일 (오늘부터 거꾸로 100% 완료한 날)
+let streak=0;for(let i=days.length-1;i>=0;i--){if(days[i].total>0&&days[i].done===days[i].total){streak++;}else if(days[i].total>0){break;}}
+return`<div class="home-card" data-hometab="todo">
+<div class="home-card-h"><h3>${ic('chart',14)} 최근 30일 완료율</h3><span class="home-card-meta">평균 ${avgRate}%</span></div>
+${svgRatioBars(days,52,'#0F7B6C')}
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:6px">
+<span>완료 ${totalDone}/${totalAll}건</span>
+${streak>0?`<span style="color:#0F7B6C;font-weight:600">${streak}일 연속</span>`:''}
+</div>
+</div>`;})()}
+
 ${urgentItems.length?`<div class="home-card" data-hometab="calendar">
 <div class="home-card-h"><h3>${ic('clock',14)} 마감 임박</h3><span class="home-card-meta">3일 이내 ${urgentItems.length}건</span></div>
 <div class="home-urgent-list">
@@ -1262,6 +1381,19 @@ return`<div class="mo" id="imo"><div class="mb"><h3>${S.eiid?'수정':'정보 �
 // ── 프로젝트 렌더 ──
 function dDayText(endDate){if(!endDate)return'';const t=new Date();t.setHours(0,0,0,0);const e2=pD(endDate);if(!e2)return'';const diff=Math.round((e2-t)/(1000*60*60*24));if(diff<0)return{txt:'D+'+(-diff),cls:'over'};if(diff===0)return{txt:'D-DAY',cls:'soon'};if(diff<=7)return{txt:'D-'+diff,cls:'soon'};return{txt:'D-'+diff,cls:''};}
 function prjProgress(p){const tasks=p.tasks||[];if(!tasks.length)return{done:0,total:0,pct:0};const done=tasks.filter(t=>t.done).length;return{done,total:tasks.length,pct:Math.round(done/tasks.length*100)};}
+
+// 프로젝트 시간 경과율 — startDate ~ endDate 사이에서 오늘이 어디쯤인지
+// 반환: {pct(0-100, 진행 시간 비율), totalDays, passedDays, isLongTerm}
+function prjTimeProgress(p){
+if(!p.startDate||!p.endDate)return{pct:null,isLongTerm:false};
+const start=pD(p.startDate);const end=pD(p.endDate);if(!start||!end)return{pct:null,isLongTerm:false};
+const today=new Date();today.setHours(0,0,0,0);
+const totalMs=end-start;const passedMs=today-start;
+if(totalMs<=0)return{pct:null,isLongTerm:false};
+const totalDays=Math.round(totalMs/(1000*60*60*24));
+const passedDays=Math.max(0,Math.round(passedMs/(1000*60*60*24)));
+const pct=Math.max(0,Math.min(100,Math.round(passedMs/totalMs*100)));
+return{pct,totalDays,passedDays,isLongTerm:totalDays>=30};}
 function msProgress(p,msId){const tasks=(p.tasks||[]).filter(t=>t.milestoneId===msId);if(!tasks.length)return{done:0,total:0,pct:0};const done=tasks.filter(t=>t.done).length;return{done,total:tasks.length,pct:Math.round(done/tasks.length*100)};}
 
 function rPr(){
@@ -1331,6 +1463,8 @@ return`<div class="mo" id="pcatActionMo"><div class="mb" style="max-width:340px"
 
 // 프로젝트 카드 한 개 렌더 (목록과 폴더 안에서 공통)
 function renderPrjCard(p,pc){const prog=prjProgress(p);const dd=dDayText(p.endDate);
+const tp=prjTimeProgress(p);
+const showMarker=tp.isLongTerm&&tp.pct!=null&&p.status==='active';
 return`<div class="prj-card ${p.status}" data-prjopen="${p.id}" style="border-left-color:${pc.color}">
 <div class="prj-card-head">
 <div style="flex:1;min-width:0">
@@ -1339,7 +1473,9 @@ ${p.desc?`<div class="prj-card-desc">${e(p.desc)}</div>`:''}
 </div>
 <span class="prj-card-pri ${p.priority}">${p.priority}</span>
 </div>
-${prog.total>0?`<div class="prj-card-prog"><div class="prj-card-prog-tx"><span>${prog.done}/${prog.total} 완료</span><span>${prog.pct}%</span></div><div class="pb"><div class="pf" style="width:${prog.pct}%;background:${pc.color}"></div></div></div>`:''}
+${prog.total>0?`<div class="prj-card-prog"><div class="prj-card-prog-tx"><span>${prog.done}/${prog.total} 완료</span><span>${prog.pct}%</span></div>
+<div style="position:relative"><div class="pb"><div class="pf" style="width:${prog.pct}%;background:${pc.color}"></div></div>
+${showMarker?`<div style="position:absolute;left:${tp.pct}%;top:-3px;width:2px;height:12px;background:var(--text);transform:translateX(-1px)"></div>`:''}</div></div>`:''}
 ${(p.endDate||p.status!=='active')?`<div class="prj-card-meta">
 <span>${p.endDate?`<span style="display:inline-flex;align-items:center;gap:3px">${ic('target',12)} ${p.endDate}</span>`:''}</span>
 <span>${dd?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}${p.status==='archived'?'<span class="prj-status-pill archived">보관</span>':p.status==='paused'?'<span class="prj-status-pill paused">일시중단</span>':''}</span>
@@ -1416,7 +1552,23 @@ ${p.desc?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bo
 <div class="prj-info-row"><span class="lab">상태</span><span class="val"><span class="prj-status-pill ${p.status}">${p.status==='active'?'활성':p.status==='archived'?'보관':'일시중단'}</span></span></div>
 ${p.startDate?`<div class="prj-info-row"><span class="lab">시작일</span><span class="val">${p.startDate}</span></div>`:''}
 ${p.endDate?`<div class="prj-info-row"><span class="lab">목표일</span><span class="val">${p.endDate} ${dd?`<span class="dday ${dd.cls}" style="margin-left:6px">${dd.txt}</span>`:''}</span></div>`:''}
-${prog.total>0?`<div class="prj-info-row"><span class="lab">진행률</span><span class="val" style="font-weight:600;color:${pc.color}">${prog.done}/${prog.total} (${prog.pct}%)</span></div><div class="pb" style="margin-top:6px"><div class="pf" style="width:${prog.pct}%;background:${pc.color}"></div></div>`:''}
+${prog.total>0?(()=>{
+const tp=prjTimeProgress(p);
+const showTimeMarker=tp.isLongTerm&&tp.pct!=null&&p.status==='active';
+const pace=showTimeMarker?(prog.pct-tp.pct):null; // +면 빠름, -면 느림
+let paceLabel='';
+if(showTimeMarker&&pace!=null){
+if(pace>=15)paceLabel=`<span style="font-size:10px;color:#0F7B6C;font-weight:600">매우 빠름</span>`;
+else if(pace>=5)paceLabel=`<span style="font-size:10px;color:#0F7B6C;font-weight:600">+${pace}% 빠름</span>`;
+else if(pace<=-15)paceLabel=`<span style="font-size:10px;color:var(--danger);font-weight:600">매우 느림</span>`;
+else if(pace<=-5)paceLabel=`<span style="font-size:10px;color:var(--danger);font-weight:600">${pace}% 느림</span>`;
+else paceLabel=`<span style="font-size:10px;color:var(--sub);font-weight:600">정상 페이스</span>`;}
+return`<div class="prj-info-row"><span class="lab">진행률</span><span class="val" style="font-weight:600;color:${pc.color}">${prog.done}/${prog.total} (${prog.pct}%) ${paceLabel}</span></div>
+<div style="position:relative;margin-top:6px">
+<div class="pb"><div class="pf" style="width:${prog.pct}%;background:${pc.color}"></div></div>
+${showTimeMarker?`<div title="시간 경과 ${tp.pct}%" style="position:absolute;left:${tp.pct}%;top:-3px;width:2px;height:12px;background:var(--text);transform:translateX(-1px)"></div>`:''}
+</div>
+${showTimeMarker?`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:4px"><span>시간 경과 ${tp.pct}% (${tp.passedDays}/${tp.totalDays}일)</span><span>진행률 ${prog.pct}%</span></div>`:''}`;})():''}
 </div>
 
 ${retroBox}
@@ -1543,6 +1695,25 @@ return`<div class="mo-total">
 <div class="val">${fmtKRW(total)}</div>
 <div class="sub"><span>활성 계좌 ${S.accounts.filter(a=>a.active!==false).length}개</span></div>
 </div>
+
+${(()=>{
+// 자산 추이 - 최근 6개월
+if(!S.txs.length)return'';
+const trend=assetTrend(5); // 5개월 전부터 + 이번 달 = 6개월
+const nonZero=trend.filter(t=>t.value!==0);
+if(nonZero.length<2)return'';
+const first=trend[0].value;const last=trend[trend.length-1].value;
+const diff=last-first;
+const pct=first?Math.round(diff/Math.abs(first)*100):0;
+return`<div class="mo-section-h"><h3>자산 추이 (6개월)</h3></div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 6px;margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
+<span style="color:var(--sub)">6개월 전 대비</span>
+<span style="font-weight:600;color:${diff>=0?'#0F7B6C':'#E03E3E'};font-size:13px">${diff>=0?'+':''}${fmtKRW(diff)}${first?` (${pct>=0?'+':''}${pct}%)`:''}</span>
+</div>
+${svgLine(trend,120,'#337EA9')}
+</div>`;})()}
+
 <div class="mo-month-nav">
 <button data-momn="-1">←</button>
 <div class="lbl">${ym.replace('-','년 ')}월</div>
@@ -1841,6 +2012,36 @@ ${ml!=null?`<div class="prj-info-row"><span class="lab">남은 기간</span><spa
 ${need!=null&&remain>0?`<div class="prj-info-row"><span class="lab">월 필요 저축액</span><span class="val" style="font-weight:700;color:var(--text)">${fmtKRW(need)}</span></div>`:''}
 ${g.memo?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text);white-space:pre-wrap">${e(g.memo)}</div>`:''}
 </div>
+
+${(()=>{
+// 달성 예측
+if(g.status!=='active'||remain<=0)return'';
+const fc=goalForecast(g,30);
+if(!fc)return'';
+let title='달성 예측';
+let body='';
+let bgColor='#fff';
+let borderColor='var(--border)';
+let valueColor='var(--text)';
+if(fc.dailyRate<=0||fc.daysToGoal==null){
+body=`<div style="font-size:12px;color:var(--sub);text-align:center;padding:8px 0">최근 30일간 연결 계좌의 순흐름이 없거나 마이너스라 예측이 어려워요.<br>거래를 추가하면 예측이 활성화돼요.</div>`;
+}else{
+const monthlyRate=fc.dailyRate*30;
+const dateStr=fc.expectedDate;
+const monthsAway=Math.round(fc.daysToGoal/30*10)/10;
+let vsLabel='';
+if(fc.vsTarget==='early'){bgColor='#F1F8F4';borderColor='#0F7B6C40';valueColor='#0F7B6C';vsLabel=`<span style="font-size:11px;color:#0F7B6C;font-weight:600">목표일보다 ${Math.abs(fc.comparison)}일 빨라요</span>`;}
+else if(fc.vsTarget==='late'){bgColor='#FDF1F1';borderColor='#E03E3E40';valueColor='#E03E3E';vsLabel=`<span style="font-size:11px;color:#E03E3E;font-weight:600">목표일보다 ${fc.comparison}일 늦어져요</span>`;}
+else if(fc.vsTarget==='on'){bgColor='#F1F8F4';borderColor='#0F7B6C40';vsLabel=`<span style="font-size:11px;color:#0F7B6C;font-weight:600">목표일에 거의 맞아요</span>`;}
+body=`
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-size:11px;color:var(--sub)">예상 달성일</span><span style="font-size:14px;font-weight:700;color:${valueColor}">${dateStr} (${monthsAway}개월 후)</span></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-size:11px;color:var(--sub)">최근 30일 평균 저축</span><span style="font-size:12px;font-weight:600">${fmtKRW(monthlyRate)}/월</span></div>
+${vsLabel?`<div style="text-align:right;margin-top:4px">${vsLabel}</div>`:''}
+`;}
+return`<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:12px;padding:12px 14px;margin-bottom:12px">
+<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">${title}</div>
+${body}
+</div>`;})()}
 
 <div style="margin-bottom:8px;font-size:13px;font-weight:600">연결 계좌 (${linkedAccs.length})</div>
 ${!linkedAccs.length?'<div class="tx-empty" style="padding:20px;font-size:11px">연결된 계좌가 없어요. 수정에서 추가하세요</div>':linkedAccs.map(a=>{const c=assetKindColor(a.kind);return`<div class="ac-card" data-acopen="${a.id}" style="border-left-color:${c};margin-bottom:6px">
