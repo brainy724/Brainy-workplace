@@ -757,31 +757,46 @@ return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%
 // 활동 히트맵 (GitHub 잔디그래프 스타일) — 1년치
 // data: {dateStr: intensity 0-1}
 // color: 기본 색상 (intensity가 0~1로 투명도 조절)
-function svgHeatmap(data,color){
+// 활동 히트맵 — 특정 연도의 1월 1일 ~ 12월 31일 (GitHub 잔디그래프 스타일)
+// data: {dateStr: intensity 0-1}
+// year: 표시할 연도 (생략 시 올해)
+// color: 기본 색상
+function svgHeatmap(data,color,year){
 const today=new Date();today.setHours(0,0,0,0);
-// 365일 전부터 오늘까지
-const start=new Date(today);start.setDate(today.getDate()-364);
-// 시작일을 일요일로 맞춤
-const startDay=start.getDay();
-start.setDate(start.getDate()-startDay);
-// 53주 x 7일
+const yr=year||today.getFullYear();
+// 해당 연도의 1월 1일 ~ 12월 31일
+const yearStart=new Date(yr,0,1);
+const yearEnd=new Date(yr,11,31);
+// 그리드 시작은 1월 1일이 속한 주의 일요일
+const gridStart=new Date(yearStart);
+gridStart.setDate(yearStart.getDate()-yearStart.getDay());
+// 그리드 끝은 12월 31일이 속한 주의 토요일
+const gridEnd=new Date(yearEnd);
+gridEnd.setDate(yearEnd.getDate()+(6-yearEnd.getDay()));
 const cellW=12,cellGap=2;
-const totalWeeks=Math.ceil(((today-start)/(1000*60*60*24)+1)/7);
+const totalWeeks=Math.round(((gridEnd-gridStart)/(1000*60*60*24)+1)/7);
 const w=totalWeeks*(cellW+cellGap);
-const h=7*(cellW+cellGap)+18; // 위쪽 월 라벨 공간
+const h=7*(cellW+cellGap)+18;
 const c=color||'#0F7B6C';
 let cells='';let monthLabels='';let lastMonth=-1;
 for(let week=0;week<totalWeeks;week++){
 for(let day=0;day<7;day++){
-const cur=new Date(start);cur.setDate(start.getDate()+week*7+day);
-if(cur>today)continue;
-const ds=fD(cur);
-const intensity=data[ds]||0;
-const opacity=intensity===0?0.07:Math.max(0.2,Math.min(1,intensity));
+const cur=new Date(gridStart);cur.setDate(gridStart.getDate()+week*7+day);
 const x=week*(cellW+cellGap);
 const y=18+day*(cellW+cellGap);
-cells+=`<rect x="${x}" y="${y}" width="${cellW}" height="${cellW}" fill="${c}" opacity="${opacity}" rx="2" data-hd="${ds}"><title>${ds}</title></rect>`;
-// 월 라벨 (각 달의 첫째 주)
+// 해당 연도 밖이거나 미래 → 빈칸 (더 옅게)
+const isOutOfYear=cur.getFullYear()!==yr;
+const isFuture=cur>today;
+if(isOutOfYear){
+// 연도 밖은 아예 그리지 않음 (깨끗한 1월~12월)
+continue;}
+const ds=fD(cur);
+const intensity=data[ds]||0;
+let opacity;
+if(isFuture){opacity=0.04;}
+else{opacity=intensity===0?0.07:Math.max(0.2,Math.min(1,intensity));}
+cells+=`<rect x="${x}" y="${y}" width="${cellW}" height="${cellW}" fill="${c}" opacity="${opacity}" rx="2" data-hd="${ds}"><title>${ds}${isFuture?' (예정)':''}</title></rect>`;
+// 월 라벨 (각 달의 첫째 주, 일요일 행에서)
 if(day===0){const mo=cur.getMonth();if(mo!==lastMonth&&cur.getDate()<=7){monthLabels+=`<text x="${x}" y="13" font-size="9" fill="#787774">${mo+1}월</text>`;lastMonth=mo;}}}}
 return`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px">
 <svg width="${w}" height="${h}" style="display:block">
@@ -791,6 +806,41 @@ ${monthLabels}${cells}
 <span>적음</span>
 ${[0.07,0.25,0.5,0.75,1].map(o=>`<rect width="11" height="11" rx="2" fill="${c}" opacity="${o}" style="display:inline-block;vertical-align:middle"></rect>`).join('').replace(/<rect /g,'<svg width="11" height="11" style="display:inline-block;vertical-align:middle"><rect ').replace(/><\/rect>/g,'></rect></svg>')}
 <span>많음</span>
+</div>`;}
+
+// 미니 히트맵 — 작고 컴팩트, 한 줄용 (프로젝트별 활동)
+// data: {dateStr: intensity 0-1}
+// color: 색상 (프로젝트 카테고리 색)
+// year: 연도
+function svgHeatmapMini(data,color,year){
+const today=new Date();today.setHours(0,0,0,0);
+const yr=year||today.getFullYear();
+const yearStart=new Date(yr,0,1);
+const yearEnd=new Date(yr,11,31);
+const gridStart=new Date(yearStart);gridStart.setDate(yearStart.getDate()-yearStart.getDay());
+const gridEnd=new Date(yearEnd);gridEnd.setDate(yearEnd.getDate()+(6-yearEnd.getDay()));
+const cellW=8,cellGap=1.5;
+const totalWeeks=Math.round(((gridEnd-gridStart)/(1000*60*60*24)+1)/7);
+const w=totalWeeks*(cellW+cellGap);
+const h=7*(cellW+cellGap);
+const c=color||'#0F7B6C';
+let cells='';
+for(let week=0;week<totalWeeks;week++){
+for(let day=0;day<7;day++){
+const cur=new Date(gridStart);cur.setDate(gridStart.getDate()+week*7+day);
+if(cur.getFullYear()!==yr)continue;
+const x=week*(cellW+cellGap);
+const y=day*(cellW+cellGap);
+const isFuture=cur>today;
+const ds=fD(cur);
+const intensity=data[ds]||0;
+let opacity;
+if(isFuture){opacity=0.04;}
+else{opacity=intensity===0?0.07:Math.max(0.2,Math.min(1,intensity));}
+cells+=`<rect x="${x}" y="${y}" width="${cellW}" height="${cellW}" fill="${c}" opacity="${opacity}" rx="1.5"><title>${ds}${intensity>0?' · '+Math.round(intensity*10)+'+':''}</title></rect>`;
+}}
+return`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px">
+<svg width="${w}" height="${h}" style="display:block">${cells}</svg>
 </div>`;}
 
 // 요일별 가로 막대 — 라벨이 옆에 붙는 형태
@@ -849,6 +899,7 @@ home:[
 {id:'today_todos',label:'오늘 할 일'},
 {id:'30day_completion',label:'최근 30일 완료율'},
 {id:'year_heatmap',label:'1년 활동 히트맵'},
+{id:'project_heatmaps',label:'프로젝트별 히트맵'},
 {id:'weekday_pattern',label:'요일별 완료율'},
 {id:'condition_30',label:'최근 30일 컨디션'},
 {id:'urgent',label:'마감 임박'},
@@ -1159,7 +1210,8 @@ esubId:null,
 subForm:{name:'',amount:0,cycle:'monthly',cycleDay:1,cycleMonth:1,startDate:'',accountId:'',category:'구독',type:'expense',active:true,memo:''},
 // 카드 레이아웃 (홈/자산 홈)
 cardLayout:migrateCardLayout(ld(K.cl,null)),
-cardEditMode:null  // 'home' | 'money' | null
+cardEditMode:null,  // 'home' | 'money' | 'projects' | 'archive' | null
+heatmapYear:new Date().getFullYear()  // 히트맵 표시 연도
 };
 function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);sv(K.sub,S.subs);sv(K.cl,S.cardLayout);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
@@ -1333,11 +1385,19 @@ ${streak>0?`<span style="color:#0F7B6C;font-weight:600">${streak}일 연속</spa
 </div>`;})();
 
 cards.year_heatmap=(()=>{
-const todayLocal=new Date();todayLocal.setHours(0,0,0,0);
-const yearAgo=new Date(todayLocal);yearAgo.setDate(todayLocal.getDate()-364);
-const yearAgoStr=fD(yearAgo);
-const yearTodos=S.todos.filter(t=>t.date>=yearAgoStr);
-if(!yearTodos.length)return'';
+const yr=S.heatmapYear||new Date().getFullYear();
+const yrPrefix=String(yr);
+// 해당 연도의 할 일만
+const yearTodos=S.todos.filter(t=>t.date&&t.date.startsWith(yrPrefix+'-'));
+// 데이터가 있는 연도들 (앞/뒤 네비 가능 여부)
+const allYears=new Set();
+S.todos.forEach(t=>{if(t.date&&t.date.length>=4)allYears.add(t.date.substring(0,4));});
+const earliestYear=allYears.size?Math.min(...[...allYears].map(Number)):yr;
+const latestYear=Math.max(yr,new Date().getFullYear());
+const canPrev=yr>earliestYear;
+const canNext=yr<latestYear;
+// 데이터 없으면 표시 안 함 (단, 네비로 빈 연도도 볼 수 있음)
+if(!allYears.size)return'';
 const dayDone={};
 yearTodos.forEach(t=>{if(t.done){dayDone[t.date]=(dayDone[t.date]||0)+1;}});
 const maxDone=Math.max(...Object.values(dayDone),1);
@@ -1347,8 +1407,58 @@ const totalDays=Object.keys(dayDone).length;
 const totalDoneYear=Object.values(dayDone).reduce((s,n)=>s+n,0);
 return`<div class="home-card">
 ${rCardEditTools('home','year_heatmap')}
-<div class="home-card-h"><h3>${ic('chart',14)} 1년 활동 히트맵</h3><span class="home-card-meta">${totalDays}일 활동 · ${totalDoneYear}건 완료</span></div>
-${svgHeatmap(heatData,'#0F7B6C')}
+<div class="home-card-h">
+<h3>${ic('chart',14)} ${yr}년 활동 히트맵</h3>
+<div style="display:inline-flex;align-items:center;gap:6px">
+<button data-hmy="-1" ${canPrev?'':'disabled'} style="padding:2px 8px;border-radius:6px;font-size:11px;color:${canPrev?'var(--sub)':'#D5D5D2'};background:transparent;border:1px solid var(--border);cursor:${canPrev?'pointer':'default'}">←</button>
+<span class="home-card-meta">${totalDays}일 · ${totalDoneYear}건</span>
+<button data-hmy="1" ${canNext?'':'disabled'} style="padding:2px 8px;border-radius:6px;font-size:11px;color:${canNext?'var(--sub)':'#D5D5D2'};background:transparent;border:1px solid var(--border);cursor:${canNext?'pointer':'default'}">→</button>
+</div>
+</div>
+${svgHeatmap(heatData,'#0F7B6C',yr)}
+</div>`;})();
+
+// 프로젝트별 히트맵 — 활성 프로젝트만, 각각 한 줄
+cards.project_heatmaps=(()=>{
+const yr=S.heatmapYear||new Date().getFullYear();
+const yrPrefix=String(yr);
+// 활성 프로젝트 (P0 → P3 순서)
+const priOrder2={'P0':0,'P1':1,'P2':2,'P3':3};
+const activePrjs=S.projects.filter(p=>p.status==='active').sort((a,b)=>(priOrder2[a.priority]||9)-(priOrder2[b.priority]||9));
+if(!activePrjs.length)return'';
+// 각 프로젝트의 그 해 doneAt 기록 활용
+const prjData=activePrjs.map(p=>{
+const tasks=p.tasks||[];
+const completed=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt.startsWith(yrPrefix+'-'));
+const dayDone={};
+completed.forEach(t=>{dayDone[t.doneAt]=(dayDone[t.doneAt]||0)+1;});
+const maxDone=Math.max(...Object.values(dayDone),1);
+const heatData={};
+Object.entries(dayDone).forEach(([d,n])=>{heatData[d]=Math.min(1,n/maxDone);});
+const pc=pcatById(p.pcat)||{name:'기타',color:'#787774'};
+return{p,pc,heatData,totalCompleted:completed.length,totalTasks:tasks.length};});
+// 데이터 있는 프로젝트만 (해당 연도에 완료한 게 있어야)
+const withData=prjData.filter(d=>d.totalCompleted>0);
+if(!withData.length)return'';
+
+return`<div class="home-card">
+${rCardEditTools('home','project_heatmaps')}
+<div class="home-card-h">
+<h3>${ic('target',14)} ${yr}년 프로젝트별 활동</h3>
+<span class="home-card-meta">${withData.length}개 프로젝트</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px;margin-top:8px">
+${withData.map(({p,pc,heatData,totalCompleted})=>`<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;font-size:11px">
+<span style="display:inline-flex;align-items:center;gap:5px;font-weight:500;color:var(--text)">
+<span style="width:8px;height:8px;border-radius:2px;background:${pc.color};flex-shrink:0"></span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(p.name)}</span>
+</span>
+<span style="color:var(--sub);flex-shrink:0;margin-left:6px">${totalCompleted}건</span>
+</div>
+${svgHeatmapMini(heatData,pc.color,yr)}
+</div>`).join('')}
+</div>
 </div>`;})();
 
 cards.weekday_pattern=(()=>{
@@ -2959,6 +3069,8 @@ window.navStack&&(window.navStack.length=0);
 R();});
 // 홈 대시보드 — 편집 모드 토글
 const homeEditBtn=document.getElementById('homeEditBtn');if(homeEditBtn)homeEditBtn.onclick=()=>{S.cardEditMode=S.cardEditMode==='home'?null:'home';R();};
+// 히트맵 연도 네비
+document.querySelectorAll('[data-hmy]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();if(b.disabled)return;const delta=parseInt(b.dataset.hmy);S.heatmapYear=(S.heatmapYear||new Date().getFullYear())+delta;R();});
 // 카드 숨김 토글
 document.querySelectorAll('[data-cardhide]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.cardhide;const scope=b.dataset.cardscope;toggleCardHidden(scope,id);R();});
 // 카드 드래그 (PC + 터치)
