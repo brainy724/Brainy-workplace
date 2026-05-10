@@ -447,7 +447,7 @@ a{color:var(--blue);text-decoration:none;}
 <div id="app"></div>
 <input type="file" id="gfi" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.hwp" style="display:none">
 <script>
-const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc',dl:'bw-dl',ac:'bw-ac',tx:'bw-tx',gl:'bw-gl',ev:'bw-ev',sub:'bw-sub'};
+const K={t:'bw-t',j:'bw-j',i:'bw-i',c:'bw-c',pw:'bw-pw',p:'bw-p',pc:'bw-pc',dl:'bw-dl',ac:'bw-ac',tx:'bw-tx',gl:'bw-gl',ev:'bw-ev',sub:'bw-sub',cl:'bw-cl'};
 
 // ── 단색 SVG 아이콘 헬퍼 ──
 // 모든 아이콘은 currentColor 스트로크 사용. 호출: ic('lock', 16)
@@ -480,7 +480,10 @@ clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
 calendar:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
 wallet:'<path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>',
 trending:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
-check_circle:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+check_circle:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+eye_off:'<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+check:'<polyline points="20 6 9 17 4 12"/>'
 };
 function ic(name,size){const sz=size||16;const path=ICONS[name];if(!path)return'';return`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0">${path}</svg>`;}
 
@@ -625,6 +628,66 @@ cumNet=cumNet-monthFlow; // 그 달 시작 시점의 자산
 result.unshift({label:String(dStart.getMonth()+1)+'월',value:cumNet,ymKey:fD(dStart).substring(0,7)});}
 return result;}
 
+// 자산 종류별 추이 — 최근 N개월 각 월말 시점의 자산 종류별 잔액
+// 반환: {labels:[월명], series:[{kind, label, color, values:[]}]}
+function assetTrendByKind(monthsBack){
+const today=new Date();today.setHours(0,0,0,0);
+// 활성 계좌 종류별 현재 잔액
+const kindNow={};
+S.accounts.forEach(a=>{if(a.active===false)return;const k=a.kind||'checking';kindNow[k]=(kindNow[k]||0)+(a.balance||0);});
+// 종류별 누적 (역산용)
+const kindCum={...kindNow};
+const labels=[];
+const seriesMap={};
+Object.keys(kindNow).forEach(k=>{seriesMap[k]={kind:k,label:assetKindLabel(k),color:assetKindColor(k),values:[]};});
+
+// 이번 달부터 과거로 거슬러
+labels.push(String(today.getMonth()+1)+'월');
+Object.keys(kindNow).forEach(k=>{seriesMap[k].values.push(kindCum[k]||0);});
+for(let i=1;i<=monthsBack;i++){
+const d=new Date(today.getFullYear(),today.getMonth()-i+1,1);
+const dEnd=new Date(d);dEnd.setDate(dEnd.getDate()-1);
+const dStart=new Date(dEnd.getFullYear(),dEnd.getMonth(),1);
+const startStr=fD(dStart),endStr=fD(dEnd);
+// 그 달의 거래 — 계좌별로 분류해서 종류별 흐름 계산
+const kindFlow={};
+S.txs.filter(t=>t.date>=startStr&&t.date<=endStr).forEach(t=>{
+const a=accountById(t.accountId);if(!a)return;
+const k=a.kind||'checking';
+kindFlow[k]=kindFlow[k]||0;
+if(t.type==='income'||t.type==='refund')kindFlow[k]+=t.amount;
+else if(t.type==='expense'||t.type==='invest')kindFlow[k]-=t.amount;
+// transfer는 계좌간 이동이라 자산 총량 변화 없음 (다만 종류별로는 변화 가능)
+// 단순화를 위해 일단 transfer 무시
+});
+// 종류별 자산 = 다음 달 자산 - 흐름
+Object.keys(seriesMap).forEach(k=>{kindCum[k]=(kindCum[k]||0)-(kindFlow[k]||0);seriesMap[k].values.unshift(kindCum[k]);});
+labels.unshift(String(dStart.getMonth()+1)+'월');}
+
+// 시리즈가 다 0인 종류는 제거
+const series=Object.values(seriesMap).filter(s=>s.values.some(v=>Math.abs(v)>0.01));
+return{labels,series};}
+
+// 적층 막대 그래프 - 자산 종류별 추이용
+// labels: [월명], series: [{label, color, values}]
+function svgStackedBars(labels,series,height){
+if(!series.length||!labels.length)return'';
+const h=height||140,padTop=10,padBot=22;const chartH=h-padTop-padBot;
+const w=320;const groupGap=4;const groupW=(w-(labels.length-1)*groupGap)/labels.length;
+// 각 월별 합계의 최대값
+const totals=labels.map((_,i)=>series.reduce((s,sr)=>s+Math.max(0,sr.values[i]||0),0));
+const maxTotal=Math.max(...totals,1);
+let bars='';
+labels.forEach((lab,i)=>{const x=i*(groupW+groupGap);
+let yAcc=padTop+chartH;
+series.forEach(sr=>{const v=Math.max(0,sr.values[i]||0);
+if(v<=0)return;
+const segH=v/maxTotal*chartH;
+yAcc-=segH;
+bars+=`<rect x="${x}" y="${yAcc}" width="${groupW}" height="${segH}" fill="${sr.color}" opacity="0.85"/>`;});
+bars+=`<text x="${x+groupW/2}" y="${h-6}" text-anchor="middle" font-size="10" fill="#787774">${lab}</text>`;});
+return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${bars}</svg>`;}
+
 // 선그래프 SVG - data: [{label, value}]
 function svgLine(data,height,color){if(!data.length)return'';
 const h=height||120,padTop=14,padBot=22,padL=8,padR=8;
@@ -690,6 +753,61 @@ const yLine=padTop+chartH-(avgValue/maxVal*chartH);
 avgLine=`<line x1="0" y1="${yLine}" x2="${w}" y2="${yLine}" stroke="#787774" stroke-width="0.8" stroke-dasharray="3 2" opacity="0.6"/>
 <text x="${w-2}" y="${yLine-3}" text-anchor="end" font-size="9" fill="#787774">평균</text>`;}
 return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${bars}${avgLine}</svg>`;}
+
+// 활동 히트맵 (GitHub 잔디그래프 스타일) — 1년치
+// data: {dateStr: intensity 0-1}
+// color: 기본 색상 (intensity가 0~1로 투명도 조절)
+function svgHeatmap(data,color){
+const today=new Date();today.setHours(0,0,0,0);
+// 365일 전부터 오늘까지
+const start=new Date(today);start.setDate(today.getDate()-364);
+// 시작일을 일요일로 맞춤
+const startDay=start.getDay();
+start.setDate(start.getDate()-startDay);
+// 53주 x 7일
+const cellW=12,cellGap=2;
+const totalWeeks=Math.ceil(((today-start)/(1000*60*60*24)+1)/7);
+const w=totalWeeks*(cellW+cellGap);
+const h=7*(cellW+cellGap)+18; // 위쪽 월 라벨 공간
+const c=color||'#0F7B6C';
+let cells='';let monthLabels='';let lastMonth=-1;
+for(let week=0;week<totalWeeks;week++){
+for(let day=0;day<7;day++){
+const cur=new Date(start);cur.setDate(start.getDate()+week*7+day);
+if(cur>today)continue;
+const ds=fD(cur);
+const intensity=data[ds]||0;
+const opacity=intensity===0?0.07:Math.max(0.2,Math.min(1,intensity));
+const x=week*(cellW+cellGap);
+const y=18+day*(cellW+cellGap);
+cells+=`<rect x="${x}" y="${y}" width="${cellW}" height="${cellW}" fill="${c}" opacity="${opacity}" rx="2" data-hd="${ds}"><title>${ds}</title></rect>`;
+// 월 라벨 (각 달의 첫째 주)
+if(day===0){const mo=cur.getMonth();if(mo!==lastMonth&&cur.getDate()<=7){monthLabels+=`<text x="${x}" y="13" font-size="9" fill="#787774">${mo+1}월</text>`;lastMonth=mo;}}}}
+return`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px">
+<svg width="${w}" height="${h}" style="display:block">
+${monthLabels}${cells}
+</svg></div>
+<div style="display:flex;justify-content:flex-end;gap:3px;align-items:center;font-size:10px;color:var(--sub);margin-top:4px">
+<span>적음</span>
+${[0.07,0.25,0.5,0.75,1].map(o=>`<rect width="11" height="11" rx="2" fill="${c}" opacity="${o}" style="display:inline-block;vertical-align:middle"></rect>`).join('').replace(/<rect /g,'<svg width="11" height="11" style="display:inline-block;vertical-align:middle"><rect ').replace(/><\/rect>/g,'></rect></svg>')}
+<span>많음</span>
+</div>`;}
+
+// 요일별 가로 막대 — 라벨이 옆에 붙는 형태
+// data: [{label, value 0-1, count}]
+function svgHorizBars(data,color){
+const c=color||'#0F7B6C';
+const maxV=Math.max(...data.map(d=>d.value||0),0.01);
+return`<div style="display:flex;flex-direction:column;gap:5px">${data.map(d=>{
+const pct=Math.round((d.value/maxV)*100);
+const realPct=Math.round(d.value*100);
+return`<div style="display:flex;align-items:center;gap:6px">
+<span style="font-size:11px;color:var(--sub);width:24px;flex-shrink:0">${d.label}</span>
+<div style="flex:1;height:14px;background:#F1F1EF;border-radius:3px;position:relative;overflow:hidden">
+<div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${c};opacity:${0.3+(d.value/maxV)*0.7};border-radius:3px"></div>
+</div>
+<span style="font-size:10px;color:var(--text);font-weight:600;width:36px;text-align:right;flex-shrink:0">${realPct}%</span>
+</div>`;}).join('')}</div>`;}
 function setupAmtInput(el){if(!el)return;
 const reformat=()=>{const cursor=el.selectionStart;const oldLen=el.value.length;
 const num=parseAmt(el.value);el.value=num?num.toLocaleString('ko-KR'):'';
@@ -721,6 +839,55 @@ active:s.active!==false,
 memo:s.memo||'',
 lastGeneratedDate:s.lastGeneratedDate||''
 }));}
+
+// ── 카드 레이아웃 시스템 ──
+// 홈/자산 홈의 카드들 순서/숨김 설정을 관리
+// cl[scope] = {order:['cardId1','cardId2',...], hidden:{cardId:true,...}}
+// scope: 'home' | 'money'
+const CARD_DEFINITIONS={
+home:[
+{id:'today_todos',label:'오늘 할 일'},
+{id:'30day_completion',label:'최근 30일 완료율'},
+{id:'year_heatmap',label:'1년 활동 히트맵'},
+{id:'weekday_pattern',label:'요일별 완료율'},
+{id:'condition_30',label:'최근 30일 컨디션'},
+{id:'urgent',label:'마감 임박'},
+{id:'active_projects',label:'활성 프로젝트'},
+{id:'upcoming',label:'다가오는 일정'},
+{id:'savings_goals',label:'저축 목표'},
+{id:'asset_summary',label:'자산 요약'}
+],
+money:[
+{id:'total_assets',label:'총 자산'},
+{id:'asset_trend',label:'자산 추이 6개월'},
+{id:'asset_kind_trend',label:'자산 종류별 추이'},
+{id:'monthly_summary',label:'이번 달 수입·지출'},
+{id:'daily_expense',label:'일일 지출 추이'},
+{id:'category_donut',label:'카테고리 도넛'},
+{id:'asset_distribution',label:'자산 분포'},
+{id:'monthly_fixed',label:'이번 달 고정비'},
+{id:'savings_goals',label:'저축 목표'},
+{id:'recent_txs',label:'최근 거래'},
+{id:'six_month_trend',label:'최근 6개월 추이'}
+]};
+function migrateCardLayout(raw){
+if(!raw)raw={};
+const result={};
+['home','money'].forEach(scope=>{
+const defs=CARD_DEFINITIONS[scope];
+const allIds=defs.map(d=>d.id);
+const saved=raw[scope]||{};
+let order=Array.isArray(saved.order)?saved.order.filter(id=>allIds.includes(id)):[];
+// 저장 안 된 카드(새로 추가된 것)는 뒤에 추가
+allIds.forEach(id=>{if(!order.includes(id))order.push(id);});
+const hidden=saved.hidden&&typeof saved.hidden==='object'?saved.hidden:{};
+result[scope]={order,hidden};});
+return result;}
+function isCardVisible(scope,cardId){return !(S.cardLayout&&S.cardLayout[scope]&&S.cardLayout[scope].hidden&&S.cardLayout[scope].hidden[cardId]);}
+function cardOrder(scope){if(!S.cardLayout||!S.cardLayout[scope])return CARD_DEFINITIONS[scope].map(d=>d.id);return S.cardLayout[scope].order;}
+function getCardLabel(scope,cardId){const d=CARD_DEFINITIONS[scope].find(x=>x.id===cardId);return d?d.label:cardId;}
+function moveCard(scope,fromIdx,toIdx){const order=[...cardOrder(scope)];const[item]=order.splice(fromIdx,1);order.splice(toIdx,0,item);S.cardLayout[scope].order=order;ps();}
+function toggleCardHidden(scope,cardId){if(!S.cardLayout[scope].hidden)S.cardLayout[scope].hidden={};S.cardLayout[scope].hidden[cardId]=!S.cardLayout[scope].hidden[cardId];ps();}
 
 // 다음 결제일 계산 — 오늘 기준
 function nextChargeDate(sub){if(!sub.active)return null;
@@ -989,9 +1156,12 @@ txSearch:'',       // 거래 검색어
 subs:migrateSubs(ld(K.sub,null)),
 ssub:false,          // 정기구독 추가/수정 모달
 esubId:null,
-subForm:{name:'',amount:0,cycle:'monthly',cycleDay:1,cycleMonth:1,startDate:'',accountId:'',category:'구독',type:'expense',active:true,memo:''}
+subForm:{name:'',amount:0,cycle:'monthly',cycleDay:1,cycleMonth:1,startDate:'',accountId:'',category:'구독',type:'expense',active:true,memo:''},
+// 카드 레이아웃 (홈/자산 홈)
+cardLayout:migrateCardLayout(ld(K.cl,null)),
+cardEditMode:null  // 'home' | 'money' | null
 };
-function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);sv(K.sub,S.subs);idbSave(S.files);}
+function ps(){sv(K.t,S.todos);sv(K.j,S.jobs);sv(K.i,S.infos);sv(K.c,S.cats);sv(K.p,S.projects);sv(K.pc,S.pcats);sv(K.dl,S.daily);sv(K.ac,S.accounts);sv(K.tx,S.txs);sv(K.gl,S.goals);sv(K.ev,S.events);sv(K.sub,S.subs);sv(K.cl,S.cardLayout);idbSave(S.files);}
 function uid(){return Math.random().toString(36).slice(2,10);}
 const DY=['일','월','화','수','목','금','토'];
 function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1121,14 +1291,11 @@ const netSaving=monthSum.income-monthSum.expense;
 const activeGoals=(S.goals||[]).filter(g=>g.status==='active').sort((a,b)=>{const ao=priOrder[a.priority]||9;const bo=priOrder[b.priority]||9;if(ao!==bo)return ao-bo;return(a.targetDate||'9999').localeCompare(b.targetDate||'9999');}).slice(0,2);
 
 // === 렌더 ===
-return`<div style="padding-top:6px">
+// 카드 정의: id별로 HTML을 변수에 담아서 순서대로 출력
+const cards={};
 
-<div style="margin-bottom:18px">
-<div style="font-size:11px;color:var(--sub);margin-bottom:2px">${greeting}</div>
-<div style="font-size:20px;font-weight:700;color:var(--text)">${today.getMonth()+1}월 ${today.getDate()}일 ${DY[today.getDay()]}요일</div>
-</div>
-
-<div class="home-card" data-hometab="todo">
+cards.today_todos=`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="todo"'}>
+${rCardEditTools('home','today_todos')}
 <div class="home-card-h"><h3>${ic('check_circle',14)} 오늘 할 일</h3><span class="home-card-meta">${doneTodayCnt}/${allTodayCnt}</span></div>
 ${todayTodos.length?`
 <div class="home-todo-list">
@@ -1139,36 +1306,97 @@ ${t.gtd&&t.gtd!=='next'?`<span class="home-todo-gtd" style="color:${gtdColor(t.g
 </div>`).join('')}
 ${todayTodos.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${todayTodos.length-5}개 더</div>`:''}
 </div>`:`<div class="home-empty">오늘 할 일이 없어요. 잘하셨어요!</div>`}
-</div>
+</div>`;
 
-${(()=>{
-// 최근 30일 할 일 완료 추이
+cards['30day_completion']=(()=>{
 const days=[];
 for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);const ds=fD(d);
 const dayTodos=S.todos.filter(t=>t.date===ds);
 const total=dayTodos.length;const done=dayTodos.filter(t=>t.done).length;
 const ratio=total?done/total:0;
-// 라벨: 5일마다 한번 (혼잡 방지)
 const showLabel=i===0||i===29||i%5===0;
 days.push({value:ratio,label:showLabel?(i===0?'오늘':String(d.getDate())):'',full:total>0,total,done,date:ds});}
 const has=days.some(d=>d.total>0);
 if(!has)return'';
-// 통계
 const totalDone=days.reduce((s,d)=>s+d.done,0);
 const totalAll=days.reduce((s,d)=>s+d.total,0);
 const avgRate=totalAll?Math.round(totalDone/totalAll*100):0;
-// 연속 완료일 (오늘부터 거꾸로 100% 완료한 날)
 let streak=0;for(let i=days.length-1;i>=0;i--){if(days[i].total>0&&days[i].done===days[i].total){streak++;}else if(days[i].total>0){break;}}
-return`<div class="home-card" data-hometab="todo">
+return`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="todo"'}>
+${rCardEditTools('home','30day_completion')}
 <div class="home-card-h"><h3>${ic('chart',14)} 최근 30일 완료율</h3><span class="home-card-meta">평균 ${avgRate}%</span></div>
 ${svgRatioBars(days,52,'#0F7B6C')}
 <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:6px">
 <span>완료 ${totalDone}/${totalAll}건</span>
 ${streak>0?`<span style="color:#0F7B6C;font-weight:600">${streak}일 연속</span>`:''}
 </div>
-</div>`;})()}
+</div>`;})();
 
-${urgentItems.length?`<div class="home-card" data-hometab="calendar">
+cards.year_heatmap=(()=>{
+const todayLocal=new Date();todayLocal.setHours(0,0,0,0);
+const yearAgo=new Date(todayLocal);yearAgo.setDate(todayLocal.getDate()-364);
+const yearAgoStr=fD(yearAgo);
+const yearTodos=S.todos.filter(t=>t.date>=yearAgoStr);
+if(!yearTodos.length)return'';
+const dayDone={};
+yearTodos.forEach(t=>{if(t.done){dayDone[t.date]=(dayDone[t.date]||0)+1;}});
+const maxDone=Math.max(...Object.values(dayDone),1);
+const heatData={};
+Object.entries(dayDone).forEach(([d,n])=>{heatData[d]=Math.min(1,n/maxDone);});
+const totalDays=Object.keys(dayDone).length;
+const totalDoneYear=Object.values(dayDone).reduce((s,n)=>s+n,0);
+return`<div class="home-card">
+${rCardEditTools('home','year_heatmap')}
+<div class="home-card-h"><h3>${ic('chart',14)} 1년 활동 히트맵</h3><span class="home-card-meta">${totalDays}일 활동 · ${totalDoneYear}건 완료</span></div>
+${svgHeatmap(heatData,'#0F7B6C')}
+</div>`;})();
+
+cards.weekday_pattern=(()=>{
+const todayLocal=new Date();todayLocal.setHours(0,0,0,0);
+const yearAgo=new Date(todayLocal);yearAgo.setDate(todayLocal.getDate()-364);
+const yearAgoStr=fD(yearAgo);
+const yearTodos=S.todos.filter(t=>t.date>=yearAgoStr);
+if(!yearTodos.length)return'';
+const dayLabels=['일','월','화','수','목','금','토'];
+const dayStats=[0,0,0,0,0,0,0].map(()=>({total:0,done:0}));
+yearTodos.forEach(t=>{const d=pD(t.date);if(!d)return;const dw=d.getDay();dayStats[dw].total++;if(t.done)dayStats[dw].done++;});
+const dayBars=dayStats.map((s,i)=>({label:dayLabels[i],value:s.total?s.done/s.total:0,count:s.done}));
+const reordered=[1,2,3,4,5,6,0].map(i=>dayBars[i]);
+const best=[...reordered].sort((a,b)=>b.value-a.value)[0];
+const worst=[...reordered].filter(d=>d.value>0).sort((a,b)=>a.value-b.value)[0];
+if(!best||best.value===0)return'';
+return`<div class="home-card">
+${rCardEditTools('home','weekday_pattern')}
+<div class="home-card-h"><h3>${ic('chart',14)} 요일별 완료율</h3><span class="home-card-meta">최근 1년</span></div>
+${svgHorizBars(reordered,'#0F7B6C')}
+<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--sub);display:flex;justify-content:space-between"><span>최고: <span style="color:#0F7B6C;font-weight:600">${best.label}요일</span></span>${worst&&worst.label!==best.label?`<span>최저: <span style="color:var(--text);font-weight:600">${worst.label}요일</span></span>`:''}</div>
+</div>`;})();
+
+cards.condition_30=(()=>{
+if(!S.daily)return'';
+const todayLocal2=new Date();todayLocal2.setHours(0,0,0,0);
+const days=[];
+let totalCond=0,countCond=0;
+for(let i=29;i>=0;i--){const d=new Date(todayLocal2);d.setDate(todayLocal2.getDate()-i);const ds=fD(d);
+const dl=S.daily[ds];
+const cond=dl&&dl.condition?parseInt(dl.condition):0;
+if(cond>0){totalCond+=cond;countCond++;}
+const showLabel=i===0||i===29||i%5===0;
+days.push({label:showLabel?(i===0?'오늘':String(d.getDate())):'',value:cond/5,full:cond>0,cond,date:ds});}
+if(countCond<3)return'';
+const avgCond=(totalCond/countCond).toFixed(1);
+return`<div class="home-card">
+${rCardEditTools('home','condition_30')}
+<div class="home-card-h"><h3>${ic('chart',14)} 최근 30일 컨디션</h3><span class="home-card-meta">평균 ${avgCond}/5</span></div>
+${svgRatioBars(days,52,'#9065B0')}
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:6px">
+<span>${countCond}일 기록</span>
+<span style="color:${avgCond>=4?'#0F7B6C':avgCond>=3?'#CB912F':'#E03E3E'};font-weight:600">${avgCond>=4?'좋음':avgCond>=3?'보통':'낮음'}</span>
+</div>
+</div>`;})();
+
+cards.urgent=urgentItems.length?`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="calendar"'}>
+${rCardEditTools('home','urgent')}
 <div class="home-card-h"><h3>${ic('clock',14)} 마감 임박</h3><span class="home-card-meta">3일 이내 ${urgentItems.length}건</span></div>
 <div class="home-urgent-list">
 ${urgentItems.slice(0,4).map(u=>{const dLabel=u.daysAway===0?'오늘':u.daysAway===1?'내일':u.daysAway+'일 후';return`<div class="home-urgent-item">
@@ -1178,50 +1406,48 @@ ${urgentItems.slice(0,4).map(u=>{const dLabel=u.daysAway===0?'오늘':u.daysAway
 </div>`;}).join('')}
 ${urgentItems.length>4?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${urgentItems.length-4}개 더</div>`:''}
 </div>
-</div>`:''}
+</div>`:'';
 
-${activeProjects.length?`<div class="home-card" data-hometab="projects">
+cards.active_projects=activeProjects.length?`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="projects"'}>
+${rCardEditTools('home','active_projects')}
 <div class="home-card-h"><h3>${ic('target',14)} 활성 프로젝트</h3><span class="home-card-meta">${S.projects.filter(p=>p.status==='active').length}개</span></div>
 <div class="home-prj-list">
 ${activeProjects.map(p=>{const pct=prjProgress(p).pct;const pc=pcatById(p.pcat);const ccolor=pc?pc.color:'#787774';return`<div class="home-prj-item">
-<div class="home-prj-line">
-<span class="home-prj-pri pri-${p.priority}">${p.priority}</span>
-<span class="home-prj-name">${e(p.name)}</span>
-<span class="home-prj-cat" style="color:${ccolor}">${pc?e(pc.name):''}</span>
-</div>
-<div class="pb" style="height:4px;margin-top:4px"><div class="pf" style="width:${pct}%;background:${ccolor}"></div></div>
+<div class="home-prj-name"><span class="home-prj-pri ${p.priority}">${p.priority}</span> ${e(p.name)}</div>
+<div class="home-prj-bar"><div class="home-prj-bar-f" style="width:${pct}%;background:${ccolor}"></div></div>
+<div class="home-prj-pct">${pct}%</div>
 </div>`;}).join('')}
 </div>
-</div>`:''}
+</div>`:'';
 
-${upcoming.length?`<div class="home-card" data-hometab="calendar">
+cards.upcoming=upcoming.length?`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="calendar"'}>
+${rCardEditTools('home','upcoming')}
 <div class="home-card-h"><h3>${ic('calendar',14)} 다가오는 일정</h3><span class="home-card-meta">7일 이내 ${upcoming.length}건</span></div>
-<div class="home-upcoming-list">
-${upcoming.slice(0,5).map(u=>{const d=pD(u.date);return`<div class="home-upcoming-item">
-<span class="home-upcoming-date">${d?(d.getMonth()+1)+'/'+d.getDate()+' ('+DY[d.getDay()]+')':''}</span>
-<div class="home-upcoming-dot" style="background:${u.color}"></div>
-<span class="home-upcoming-text">${e(u.label)}</span>
+<div class="home-urgent-list">
+${upcoming.slice(0,4).map(u=>{const dt=pD(u.date);const lbl=dt?`${dt.getMonth()+1}/${dt.getDate()} (${DY[dt.getDay()]})`:'';return`<div class="home-urgent-item">
+<div class="home-urgent-dot" style="background:${u.color}"></div>
+<span class="home-urgent-day">${lbl}</span>
+<span class="home-urgent-text">${e(u.label)}</span>
 </div>`;}).join('')}
-${upcoming.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${upcoming.length-5}개 더</div>`:''}
+${upcoming.length>4?`<div style="font-size:11px;color:var(--sub);margin-top:4px;padding-left:2px">+${upcoming.length-4}개 더</div>`:''}
 </div>
-</div>`:''}
+</div>`:'';
 
-${activeGoals.length?`<div class="home-card" data-homeact="goals">
+cards.savings_goals=activeGoals.length?`<div class="home-card" ${S.cardEditMode==='home'?'':'data-homeact="goals"'}>
+${rCardEditTools('home','savings_goals')}
 <div class="home-card-h"><h3>${ic('wallet',14)} 저축 목표</h3><span class="home-card-meta">활성 ${(S.goals||[]).filter(g=>g.status==='active').length}개</span></div>
-<div class="home-goal-list">
-${activeGoals.map(g=>{const{saved,target,pct}=goalProgress(g);const dd=g.targetDate?dDayText(g.targetDate):null;return`<div class="home-goal-item">
-<div class="home-goal-line">
-<span class="home-prj-pri pri-${g.priority}">${g.priority}</span>
-<span class="home-goal-name">${e(g.name)}</span>
-${dd?`<span class="dday ${dd.cls}">${dd.txt}</span>`:''}
+${activeGoals.map(g=>{const{saved,target,pct}=goalProgress(g);return`<div style="margin-bottom:8px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px">
+<span style="font-weight:500">${g.priority?`<span style="color:var(--sub);margin-right:4px">${g.priority}</span>`:''}${e(g.name)}</span>
+<span style="color:var(--sub);font-size:11px">${pct}%</span>
 </div>
+<div class="pb" style="margin-top:3px;height:5px"><div class="pf" style="width:${pct}%;background:var(--text)"></div></div>
 <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px"><span>${fmtKRWShort(saved)} / ${fmtKRWShort(target)}</span><span>${pct}%</span></div>
-<div class="pb" style="height:4px;margin-top:3px"><div class="pf" style="width:${pct}%;background:var(--text)"></div></div>
 </div>`;}).join('')}
-</div>
-</div>`:''}
+</div>`:'';
 
-${S.accounts.length?`<div class="home-card" data-hometab="money">
+cards.asset_summary=S.accounts.length?`<div class="home-card" ${S.cardEditMode==='home'?'':'data-hometab="money"'}>
+${rCardEditTools('home','asset_summary')}
 <div class="home-card-h"><h3>${ic('chart',14)} 자산 요약</h3><span class="home-card-meta">${ym.replace('-','년 ')}월</span></div>
 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;margin-bottom:8px">
 <span style="font-size:11px;color:var(--sub)">총 자산</span>
@@ -1232,11 +1458,49 @@ ${S.accounts.length?`<div class="home-card" data-hometab="money">
 <div style="flex:1;background:#FDF1F1;border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--sub)">지출</div><div style="font-size:13px;font-weight:600;color:#E03E3E">-${fmtKRWShort(monthSum.expense)}</div></div>
 <div style="flex:1;background:${netSaving>=0?'#F1F8F4':'#FDF1F1'};border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--sub)">순저축</div><div style="font-size:13px;font-weight:600;color:${netSaving>=0?'#0F7B6C':'#E03E3E'}">${netSaving>=0?'+':''}${fmtKRWShort(netSaving)}</div></div>
 </div>
-</div>`:''}
+</div>`:'';
 
-${!todayTodos.length&&!urgentItems.length&&!activeProjects.length&&!upcoming.length&&!activeGoals.length&&!S.accounts.length?`<div class="tx-empty" style="padding:60px 24px;font-size:13px">시작해볼까요?<br><br>각 탭에서 데이터를 추가하면<br>여기에 요약이 나타납니다</div>`:''}
-
+// 카드 순서대로 출력 + 숨겨진 카드 처리
+const order=cardOrder('home');
+const isEditing=S.cardEditMode==='home';
+const cardsHtml=order.map(id=>{
+const html=cards[id]||'';
+if(!html)return'';
+const hidden=!isCardVisible('home',id);
+if(hidden&&!isEditing)return'';
+if(hidden&&isEditing){
+return`<div class="home-card" style="opacity:0.5;background:#F9FAFB" data-cardid="${id}" data-cardscope="home" draggable="true">
+${rCardEditTools('home',id,true)}
+<div style="font-size:13px;color:var(--sub);text-align:center;padding:8px">${getCardLabel('home',id)} (숨김)</div>
 </div>`;}
+if(isEditing){
+// 편집 모드: 카드를 wrapper로 감싸서 드래그 가능하게
+return`<div data-cardid="${id}" data-cardscope="home" draggable="true">${html}</div>`;}
+return html;}).join('');
+
+const editBtn=`<button id="homeEditBtn" style="padding:5px 12px;border-radius:8px;font-size:11px;background:${isEditing?'var(--text)':'transparent'};color:${isEditing?'#fff':'var(--sub)'};border:1px solid ${isEditing?'var(--text)':'var(--border)'};display:inline-flex;align-items:center;gap:4px">${isEditing?ic('check',12)+' 완료':ic('edit',12)+' 편집'}</button>`;
+
+return`<div style="padding-top:6px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+<div>
+<div style="font-size:11px;color:var(--sub);margin-bottom:2px">${greeting}</div>
+<div style="font-size:20px;font-weight:700;color:var(--text)">${today.getMonth()+1}월 ${today.getDate()}일 ${DY[today.getDay()]}요일</div>
+</div>
+${editBtn}
+</div>
+${isEditing?`<div style="background:var(--al);border:1px solid var(--ad);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--ad)">카드를 드래그해서 순서를 바꾸거나, 눈 아이콘으로 숨길 수 있어요</div>`:''}
+${cardsHtml}
+${!todayTodos.length&&!urgentItems.length&&!activeProjects.length&&!upcoming.length&&!activeGoals.length&&!S.accounts.length&&!isEditing?`<div class="tx-empty" style="padding:60px 24px;font-size:13px">시작해볼까요?<br><br>각 탭에서 데이터를 추가하면<br>여기에 요약이 나타납니다</div>`:''}
+</div>`;}
+
+// 카드 편집 도구 (드래그 핸들 + 숨김 토글)
+function rCardEditTools(scope,cardId,isHidden){
+if(S.cardEditMode!==scope)return'';
+return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed var(--border)">
+<div class="dh" data-carddrag="${cardId}" style="font-size:14px;color:var(--accent);cursor:grab;display:inline-flex;align-items:center;gap:4px;font-weight:600">${ic('drag',14)} 드래그</div>
+<button data-cardhide="${cardId}" data-cardscope="${scope}" style="font-size:11px;padding:4px 10px;border-radius:6px;background:transparent;border:1px solid var(--border);color:${isHidden?'var(--accent)':'var(--sub)'};display:inline-flex;align-items:center;gap:4px">${isHidden?ic('eye',12)+' 보기':ic('eye_off',12)+' 숨기기'}</button>
+</div>`;}
+
 
 function rTd(){const d=pD(S.selDate),iT=S.selDate===fD(new Date());
 
@@ -1331,12 +1595,36 @@ stsOrder.forEach(s=>{const cnt=S.jobs.filter(j=>j.status===s).length;
 folders+=`<div class="folder" data-jf="${s}">${folderIcon(72,SC[s])}<div class="folder-name" style="color:${SC[s]}">${s}</div><div class="folder-count">${cnt}건</div></div>`;});
 folders+='</div>';
 
+// 통계 카드 (입사지원이 있을 때만)
+let statsCard='';
+if(S.jobs.length>=2){
+// 도넛 데이터: 각 상태별 건수 + 색상
+const donutData=stsOrder.map(s=>{const cnt=S.jobs.filter(j=>j.status===s).length;return[s,cnt,SC[s]];}).filter(([,v])=>v>0);
+const total=S.jobs.length;
+const passed=S.jobs.filter(j=>j.status==='최종합격').length;
+const failed=S.jobs.filter(j=>j.status==='불합격').length;
+const concluded=passed+failed;
+const passRate=concluded?Math.round(passed/concluded*100):null;
+const docPassed=S.jobs.filter(j=>['서류합격','면접예정','최종합격'].includes(j.status)).length;
+const submitted=S.jobs.filter(j=>j.status!=='준비중').length;
+const docPassRate=submitted?Math.round(docPassed/submitted*100):null;
+statsCard=`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+<div style="display:flex;align-items:center;gap:14px">
+<div style="flex-shrink:0">${svgDonut(donutData,110)}</div>
+<div style="flex:1;min-width:0">
+${docPassRate!=null?`<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px"><span style="color:var(--sub)">서류 합격률</span><span style="font-weight:700;font-size:14px;color:#0F7B6C">${docPassRate}%</span></div><div style="font-size:10px;color:var(--sub);margin-bottom:8px">지원 ${submitted}건 중 ${docPassed}건 통과</div>`:''}
+${passRate!=null?`<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px;padding-top:6px;border-top:1px solid var(--border)"><span style="color:var(--sub)">최종 합격률</span><span style="font-weight:700;font-size:14px;color:#0F7B6C">${passRate}%</span></div><div style="font-size:10px;color:var(--sub)">결과 나온 ${concluded}건 중 ${passed}건 합격</div>`:concluded===0?`<div style="font-size:11px;color:var(--sub);padding-top:6px;border-top:1px solid var(--border)">아직 결과 나온 지원이 없어요</div>`:''}
+</div>
+</div>
+</div>`;}
+
 return`<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
 <h3 style="font-size:15px;font-weight:600">입사지원 현황</h3>
 <button class="bp" id="ajb" style="padding:6px 12px;font-size:12px">+ 추가</button>
 </div>
 <div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.jobs.length}건</div>
+${statsCard}
 ${folders}
 </div>`;}
 
@@ -1371,16 +1659,17 @@ header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
 ${S.editCatColor===curCat.id?`<div class="color-palette" style="margin-bottom:12px">${FCOLORS.map(cl=>`<div class="color-dot ${cc===cl?'sel':''}" style="background:${cl}" data-setcc="${cl}"></div>`).join('')}</div>`:''}`;}
 
 // 하위 폴더 그리드
+const isCatEditing=S.cardEditMode==='archive';
 let folders='';
 if(children.length||!curId){
 folders='<div class="folder-grid" id="catFolderList">';
 children.forEach(c=>{const n=infosInCat(c.id).length;const subCount=catChildren(c.id).length;
-folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable="true">${folderIcon(72,c.color)}<div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건${subCount?` · 하위 ${subCount}`:''}</div></div>`;});
+folders+=`<div class="folder" data-cf="${c.id}" data-catdrag="${c.id}" draggable="true" ${isCatEditing?'style="cursor:grab"':''}>${folderIcon(72,c.color)}<div class="folder-name" style="color:${c.color}">${e(c.name)}</div><div class="folder-count">${n}건${subCount?` · 하위 ${subCount}`:''}</div>${isCatEditing?`<div style="position:absolute;top:4px;right:4px;color:var(--accent);font-size:14px;background:#fff;border-radius:50%;padding:2px;border:1px solid var(--accent)">${ic('drag',12)}</div>`:''}</div>`;});
 // 미분류 (루트만)
-if(!curId){const uncatCount=S.infos.filter(x=>!x.category||!catById(x.category)).length;
+if(!curId&&!isCatEditing){const uncatCount=S.infos.filter(x=>!x.category||!catById(x.category)).length;
 if(uncatCount)folders+=`<div class="folder" data-cf="__uncat__">${folderIcon(72,'#9B9A97')}<div class="folder-name" style="color:var(--sub)">미분류</div><div class="folder-count">${uncatCount}건</div></div>`;}
-// 새 폴더 버튼 (클릭 시 모달)
-folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
+// 새 폴더 버튼 (편집 모드에선 안 보임)
+if(!isCatEditing)folders+=`<div class="folder-add" id="sacb"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
 folders+='</div>';}
 
 // 현재 폴더의 정보 카드 목록
@@ -1393,9 +1682,9 @@ const uncatItems=S.infos.filter(x=>!x.category||!catById(x.category));
 cd=!uncatItems.length?`<div class="em">미분류 항목이 없어요</div>`:
 `<div id="infoList">${[...uncatItems].reverse().map(inf=>{const tags=inf.tags?inf.tags.split(',').map(t=>t.trim()).filter(Boolean):[];return`<div class="ic" data-idrag="${inf.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:flex-start;gap:8px;flex:1"><div class="dh" data-idh="${inf.id}">${ic('drag',14)}</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${e(inf.title)}</div></div></div><div style="display:flex;gap:6px"><button class="be" data-ei="${inf.id}">수정</button><button class="bd" data-di="${inf.id}">삭제</button></div></div>${inf.content?`<div style="margin-top:8px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap">${e(inf.content)}</div>`:''}${inf.url?`<a href="${e(inf.url)}" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;word-break:break-all">${e(inf.url)}</a>`:''}${tags.length?`<div style="margin-top:8px">${tags.map(t=>`<span class="iht">#${e(t)}</span>`).join('')}</div>`:''}${rCFs(inf.id)}${inf.createdAt?`<div style="margin-top:6px;font-size:10px;color:#ccc">${new Date(inf.createdAt).toLocaleDateString('ko-KR')}</div>`:''}</div>`;}).join('')}</div>`;}
 
-return`<div class="sh"><h2>아카이브</h2>${curId?`<button class="bp" id="aib" style="padding:8px 14px">+ 추가</button>`:''}</div>
-${!curId?(()=>{
-// 루트에서만 검색바/태그 필터 표시
+return`<div class="sh"><h2>아카이브</h2><div style="display:flex;align-items:center;gap:6px">${!curId?`<button id="catEditBtn" style="padding:5px 10px;border-radius:8px;font-size:11px;background:${isCatEditing?'var(--text)':'transparent'};color:${isCatEditing?'#fff':'var(--sub)'};border:1px solid ${isCatEditing?'var(--text)':'var(--border)'};display:inline-flex;align-items:center;gap:4px">${isCatEditing?ic('check',12)+' 완료':ic('edit',12)}</button>`:''}${curId?`<button class="bp" id="aib" style="padding:8px 14px">+ 추가</button>`:''}</div></div>
+${isCatEditing?`<div style="background:var(--al);border:1px solid var(--ad);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--ad)">폴더를 드래그해서 순서를 바꿀 수 있어요</div>`:''}
+${!curId&&!isCatEditing?(()=>{
 const search=S.infoSearch||'';
 const tagFilter=S.infoTagFilter||'';
 // 모든 태그 수집
@@ -1491,13 +1780,15 @@ ${cards}
 ${jobSection}`;}
 
 // 3. 폴더 그리드 (첫 화면)
+const isPrjEditing=S.cardEditMode==='projects';
 const folders=S.pcats.map(c=>{
 const inCat=S.projects.filter(p=>p.pcat===c.id);
 const activeCnt=inCat.filter(p=>p.status==='active').length;
-return`<div class="folder" data-prjcf="${c.id}">
+return`<div class="folder" data-prjcf="${c.id}" ${isPrjEditing?`data-pcatdrag="${c.id}" draggable="true"`:''} ${isPrjEditing?'style="cursor:grab"':''}>
 ${folderIcon(72,c.color)}
 <div class="folder-name" style="color:${c.color}">${e(c.name)}</div>
 <div class="folder-count">${activeCnt}개${inCat.length>activeCnt?` · 전체 ${inCat.length}`:''}</div>
+${isPrjEditing?`<div style="position:absolute;top:4px;right:4px;color:var(--accent);font-size:14px;background:#fff;border-radius:50%;padding:2px;border:1px solid var(--accent)">${ic('drag',12)}</div>`:''}
 </div>`;}).join('');
 
 // 카테고리 관리 영역 (제거됨 — 폴더 길게 누르기로 대체)
@@ -1505,9 +1796,11 @@ ${folderIcon(72,c.color)}
 const totalActive=S.projects.filter(p=>p.status==='active').length;
 
 // 폴더 그리드: 기존 폴더들 + 새 폴더 추가 카드 (클릭 시 모달)
-const addCard=`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
+const addCard=isPrjEditing?'':`<div class="folder-add" id="addPCatBtn"><div class="folder-add-icon">+</div><div class="folder-name">새 폴더</div></div>`;
+const prjEditBtn=`<button id="prjEditBtn" style="padding:5px 10px;border-radius:8px;font-size:11px;background:${isPrjEditing?'var(--text)':'transparent'};color:${isPrjEditing?'#fff':'var(--sub)'};border:1px solid ${isPrjEditing?'var(--text)':'var(--border)'};display:inline-flex;align-items:center;gap:4px">${isPrjEditing?ic('check',12)+' 완료':ic('edit',12)}</button>`;
 
-return`<div class="sh"><h2>프로젝트</h2></div>
+return`<div class="sh"><h2>프로젝트</h2>${prjEditBtn}</div>
+${isPrjEditing?`<div style="background:var(--al);border:1px solid var(--ad);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--ad)">폴더를 드래그해서 순서를 바꿀 수 있어요</div>`:''}
 <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center"><input id="prjSearchIn" placeholder="프로젝트 검색" value="${e(S.prjSearch||'')}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">${S.prjSearch?`<button id="prjSearchClear" style="padding:8px 12px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:11px">초기화</button>`:''}</div>
 ${(()=>{
 // 검색어 있으면 모든 폴더에서 매칭되는 프로젝트 카드 표시
@@ -1650,6 +1943,36 @@ ${showTimeMarker?`<div style="display:flex;justify-content:space-between;font-si
 ${retroBox}
 ${retroAddBtn}
 
+${(()=>{
+// 누적 완료 그래프 — doneAt 기록이 있는 할 일들
+const completedTasks=tasks.filter(t=>t.done&&t.doneAt);
+if(completedTasks.length<2)return'';
+// 날짜별 누적 카운트
+const byDate={};
+completedTasks.forEach(t=>{byDate[t.doneAt]=(byDate[t.doneAt]||0)+1;});
+const sortedDates=Object.keys(byDate).sort();
+const firstDate=sortedDates[0];
+const today=fD(new Date());
+// 첫 완료일부터 오늘까지 누적
+const points=[];let cum=0;
+const start=pD(firstDate);const end=pD(today);
+const cur=new Date(start);
+while(cur<=end){const ds=fD(cur);if(byDate[ds])cum+=byDate[ds];
+points.push({label:`${cur.getMonth()+1}/${cur.getDate()}`,value:cum,date:ds});
+cur.setDate(cur.getDate()+1);}
+// 너무 많으면 균등 샘플링 (최대 12개)
+let displayPoints=points;
+if(points.length>12){const step=Math.ceil(points.length/12);displayPoints=points.filter((_,i)=>i%step===0||i===points.length-1);}
+const totalCompleted=cum;const totalAll=tasks.length;
+const remainingDays=points.length;
+return`<div class="prj-info-box" style="background:#fff;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:8px">
+<span style="font-size:13px;font-weight:600;color:var(--text)">누적 완료 추이</span>
+<span style="color:var(--sub)">${remainingDays}일간 ${totalCompleted}건 완료</span>
+</div>
+${svgLine(displayPoints,110,pc.color)}
+</div>`;})()}
+
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;margin-top:6px"><div style="font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px">${ic('target',16)} 마일스톤</div><button class="ms-add-btn" id="msAdd">+ 추가</button></div>
 ${msList}
 
@@ -1742,8 +2065,13 @@ else if(S.moView==='goals'||S.moView==='goal-detail')addBtn=`<button class="bp" 
 else if(S.moView==='subs')addBtn=`<button class="bp" id="moAddBtn" data-moadd="sub" style="padding:8px 14px">+ 정기</button>`;
 else addBtn=`<button class="bp" id="moAddBtn" data-moadd="tx" style="padding:8px 14px">+ 거래</button>`;
 
-return`<div class="sh"><h2>자산관리</h2>${addBtn}</div>
+// 홈 서브탭에서는 편집 모드 버튼 표시
+const isMoEditing=S.cardEditMode==='money';
+const moEditBtn=S.moView==='home'?`<button id="moEditBtn" style="padding:5px 10px;border-radius:8px;font-size:11px;background:${isMoEditing?'var(--text)':'transparent'};color:${isMoEditing?'#fff':'var(--sub)'};border:1px solid ${isMoEditing?'var(--text)':'var(--border)'};display:inline-flex;align-items:center;gap:4px;margin-right:6px">${isMoEditing?ic('check',12)+' 완료':ic('edit',12)}</button>`:'';
+
+return`<div class="sh"><h2>자산관리</h2><div style="display:flex;align-items:center">${moEditBtn}${addBtn}</div></div>
 <div class="mo-tabs">${tabs.map(t=>{const isActive=S.moView===t.k||(t.k==='accounts'&&S.moView==='account-detail')||(t.k==='goals'&&S.moView==='goal-detail');return`<button class="${isActive?'active':''}" data-mov="${t.k}">${t.l}</button>`;}).join('')}</div>
+${isMoEditing?`<div style="background:var(--al);border:1px solid var(--ad);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--ad)">카드를 드래그해서 순서를 바꾸거나, 눈 아이콘으로 숨길 수 있어요</div>`:''}
 ${body}`;}
 
 function rMoHome(){
@@ -1766,16 +2094,21 @@ const uncat=S.txs.filter(t=>!t.title||!t.title.trim());
 // 최근 거래 5건
 const recent=[...S.txs].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,5);
 
-return`<div class="mo-total">
+return(()=>{
+// 각 카드를 객체에 모아서 순서대로 출력
+const cards={};
+const isEditing=S.cardEditMode==='money';
+
+cards.total_assets=`<div class="mo-total">
+${rCardEditTools('money','total_assets')}
 <div class="lab">총 자산</div>
 <div class="val">${fmtKRW(total)}</div>
 <div class="sub"><span>활성 계좌 ${S.accounts.filter(a=>a.active!==false).length}개</span></div>
-</div>
+</div>`;
 
-${(()=>{
-// 자산 추이 - 최근 6개월
+cards.asset_trend=(()=>{
 if(!S.txs.length)return'';
-const trend=assetTrend(5); // 5개월 전부터 + 이번 달 = 6개월
+const trend=assetTrend(5);
 const nonZero=trend.filter(t=>t.value!==0);
 if(nonZero.length<2)return'';
 const first=trend[0].value;const last=trend[trend.length-1].value;
@@ -1783,18 +2116,34 @@ const diff=last-first;
 const pct=first?Math.round(diff/Math.abs(first)*100):0;
 return`<div class="mo-section-h"><h3>자산 추이 (6개월)</h3></div>
 <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 6px;margin-bottom:14px">
+${rCardEditTools('money','asset_trend')}
 <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
 <span style="color:var(--sub)">6개월 전 대비</span>
 <span style="font-weight:600;color:${diff>=0?'#0F7B6C':'#E03E3E'};font-size:13px">${diff>=0?'+':''}${fmtKRW(diff)}${first?` (${pct>=0?'+':''}${pct}%)`:''}</span>
 </div>
 ${svgLine(trend,120,'#337EA9')}
-</div>`;})()}
+</div>`;})();
 
-<div class="mo-month-nav">
+cards.asset_kind_trend=(()=>{
+if(!S.txs.length||!S.accounts.length)return'';
+const{labels,series}=assetTrendByKind(5);
+if(!series.length||series.length<2)return'';
+return`<div class="mo-section-h"><h3>자산 종류별 추이</h3></div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 6px;margin-bottom:14px">
+${rCardEditTools('money','asset_kind_trend')}
+<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--sub);margin-bottom:8px">
+${series.map(s=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:${s.color};border-radius:2px;opacity:0.85"></span>${e(s.label)}</span>`).join('')}
+</div>
+${svgStackedBars(labels,series,140)}
+</div>`;})();
+
+cards.monthly_summary=`<div class="mo-month-nav">
 <button data-momn="-1">←</button>
 <div class="lbl">${ym.replace('-','년 ')}월</div>
 <button data-momn="1">→</button>
 </div>
+<div style="position:relative">
+${rCardEditTools('money','monthly_summary')}
 <div class="mo-summary">
 <div class="mo-sum-card income"><div class="lab">수입</div><div class="val">+${fmtKRWShort(income)}</div></div>
 <div class="mo-sum-card expense"><div class="lab">지출</div><div class="val">-${fmtKRWShort(expense)}</div></div>
@@ -1803,9 +2152,7 @@ ${svgLine(trend,120,'#337EA9')}
 <span style="font-size:12px;color:var(--sub)">순저축</span>
 <span style="font-size:16px;font-weight:700;color:${net>=0?'#0F7B6C':'#E03E3E'}">${net>=0?'+':''}${fmtKRW(net)}</span>
 </div>
-
 ${(()=>{
-// 전월 대비
 const prev=monthInOut(prevMonth(ym));
 const incChg=monthOverMonth(income,prev.income);
 const expChg=monthOverMonth(expense,prev.expense);
@@ -1814,31 +2161,28 @@ return`<div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;color:
 <div style="flex:1;background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 10px"><div>전월 대비 수입</div><div style="font-size:13px;font-weight:600;margin-top:2px;color:${incChg>0?'#0F7B6C':incChg<0?'#E03E3E':'var(--text)'}">${incChg==null?'-':(incChg>0?'+':'')+incChg+'%'}</div></div>
 <div style="flex:1;background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 10px"><div>전월 대비 지출</div><div style="font-size:13px;font-weight:600;margin-top:2px;color:${expChg>0?'#E03E3E':expChg<0?'#0F7B6C':'var(--text)'}">${expChg==null?'-':(expChg>0?'+':'')+expChg+'%'}</div></div>
 </div>`;})()}
+</div>`;
 
-${(()=>{
-// 이번 달 일일 지출 추이 (1일 ~ 오늘)
-const today=new Date();today.setHours(0,0,0,0);
-const yr=today.getFullYear(),mo=today.getMonth();
-const todayDate=today.getDate();
-// 이번 달 1일부터 오늘까지의 거래
+cards.daily_expense=(()=>{
+const todayD=new Date();todayD.setHours(0,0,0,0);
+const yr=todayD.getFullYear(),mo=todayD.getMonth();
+const todayDate=todayD.getDate();
 const ymPrefix=yr+'-'+String(mo+1).padStart(2,'0');
 const monthExpenseTxs=S.txs.filter(t=>t.date.startsWith(ymPrefix)&&(t.type==='expense'||t.type==='invest'));
 if(!monthExpenseTxs.length)return'';
-// 일별 지출 누적
 const dayMap={};
 monthExpenseTxs.forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+t.amount;});
-// 1일~오늘 데이터 생성
 const days=[];
 for(let d=1;d<=todayDate;d++){const ds=ymPrefix+'-'+String(d).padStart(2,'0');
 const v=dayMap[ds]||0;
 const showLabel=d===1||d===todayDate||d%5===0;
 days.push({label:showLabel?(d===todayDate?'오늘':String(d)):'',value:v,isToday:d===todayDate,date:ds});}
-// 통계
 const totalExp=days.reduce((s,d)=>s+d.value,0);
 const avgDaily=totalExp/todayDate;
 const todayExp=days[days.length-1].value;
 return`<div class="mo-section-h"><h3>이번 달 일일 지출 추이</h3></div>
 <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 8px;margin-bottom:14px">
+${rCardEditTools('money','daily_expense')}
 <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:8px">
 <span style="color:var(--sub)">${todayDate}일간 누적</span>
 <span style="font-weight:600;font-size:13px;color:var(--text)">${fmtKRW(totalExp)}</span>
@@ -1848,20 +2192,19 @@ ${svgDailyBars(days,100,'#E03E3E',avgDaily)}
 <span>일평균 <span style="color:var(--text);font-weight:600">${fmtKRW(Math.round(avgDaily))}</span></span>
 <span>오늘 <span style="color:${todayExp>avgDaily*1.5?'#E03E3E':todayExp>0?'var(--text)':'var(--sub)'};font-weight:600">${todayExp>0?fmtKRW(todayExp):'없음'}</span></span>
 </div>
-</div>`;})()}
+</div>`;})();
 
-${(()=>{
-// 카테고리별 지출 TOP 5 + 도넛 차트
+cards.category_donut=(()=>{
 const catRowsAll=categoryExpense(monthTxs);
 if(!catRowsAll.length)return'';
 const catRows=catRowsAll.slice(0,5);
 const totalExp=catRowsAll.reduce((s,[,v])=>s+v,0)||1;
-// 6위 이하는 '기타'로 합산해서 도넛에 포함
 const donutData=[];
 catRows.forEach(([cat,v],i)=>donutData.push([cat,v,catColor(i)]));
 if(catRowsAll.length>5){const otherSum=catRowsAll.slice(5).reduce((s,[,v])=>s+v,0);donutData.push(['기타',otherSum,'#C4C2BD']);}
 return`<div class="mo-section-h"><h3>이번 달 지출 카테고리</h3></div>
 <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+${rCardEditTools('money','category_donut')}
 <div style="display:flex;align-items:center;gap:14px">
 <div style="flex-shrink:0">${svgDonut(donutData,120)}</div>
 <div style="flex:1;min-width:0">
@@ -1873,39 +2216,72 @@ ${donutData.map(([cat,v,c])=>{const pct=Math.round(v/totalExp*100);return`<div s
 <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--sub);display:flex;justify-content:space-between"><span>총 지출</span><span style="font-weight:600;color:var(--text)">${fmtKRW(totalExp)}</span></div>
 </div>
 </div>
-</div>`;})()}
+</div>`;})();
 
-${(()=>{
-// 최근 6개월 수입/지출 추이 막대 그래프
-const today=new Date();
+cards.six_month_trend=(()=>{
+const todayD=new Date();
 const months=[];
-for(let i=5;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);const ymKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const sum=monthInOut(ymKey);months.push({label:(d.getMonth()+1)+'월',income:sum.income,expense:sum.expense,ym:ymKey});}
+for(let i=5;i>=0;i--){const d=new Date(todayD.getFullYear(),todayD.getMonth()-i,1);const ymKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const sum=monthInOut(ymKey);months.push({label:(d.getMonth()+1)+'월',income:sum.income,expense:sum.expense,ym:ymKey});}
 const hasData=months.some(m=>m.income||m.expense);
 if(!hasData)return'';
 return`<div class="mo-section-h"><h3>최근 6개월 추이</h3></div>
 <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 8px;margin-bottom:14px">
+${rCardEditTools('money','six_month_trend')}
 <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:6px;font-size:10px;color:var(--sub)">
 <span style="display:inline-flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:#0F7B6C;border-radius:2px"></span>수입</span>
 <span style="display:inline-flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:#E03E3E;border-radius:2px"></span>지출</span>
 </div>
 ${svgBars(months,110)}
-</div>`;})()}
+</div>`;})();
 
-${kindRows.length?`<div class="mo-section-h"><h3>자산 분포</h3></div>
-${kindRows.map(([k,v])=>{const pct=Math.round(v/totalPos*100);const c=assetKindColor(k);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:${c};font-weight:500">${assetKindLabel(k)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;}).join('')}`:''}
+cards.asset_distribution=kindRows.length?`<div class="mo-section-h"><h3>자산 분포</h3></div>
+<div style="position:relative;margin-bottom:14px">
+${rCardEditTools('money','asset_distribution')}
+${kindRows.map(([k,v])=>{const pct=Math.round(v/totalPos*100);const c=assetKindColor(k);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:${c};font-weight:500">${assetKindLabel(k)}</span><span style="color:var(--sub)">${fmtKRWShort(v)} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;}).join('')}
+</div>`:'';
 
-${(()=>{const activeSubs=(S.subs||[]).filter(s=>s.active);if(!activeSubs.length)return'';const monthlyTotal=monthlyFixedSum(ym);return`<div class="mo-section-h"><h3>이번 달 고정비</h3><button class="be" data-mov="subs">전체 보기</button></div>
-<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+cards.monthly_fixed=(()=>{const activeSubs=(S.subs||[]).filter(s=>s.active);if(!activeSubs.length)return'';const monthlyTotal=monthlyFixedSum(ym);
+return`<div class="mo-section-h"><h3>이번 달 고정비</h3>${isEditing?'':`<button class="be" data-mov="subs">전체 보기</button>`}</div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative">
+${rCardEditTools('money','monthly_fixed')}
 <span style="font-size:12px;color:var(--sub)">활성 ${activeSubs.length}건</span>
 <span style="font-size:15px;font-weight:600;color:${monthlyTotal>=0?'#E03E3E':'#0F7B6C'}">${monthlyTotal>=0?'-':'+'}${fmtKRW(Math.abs(monthlyTotal))}</span>
-</div>`;})()}
+</div>`;})();
 
-${uncat.length?`<div style="background:#FFF8E1;border:1px solid #F5C242;border-radius:10px;padding:10px 14px;margin:14px 0;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px"><span style="color:#CB912F;display:inline-flex">${ic('warn',14)}</span><span><strong>미분류 거래 ${uncat.length}건</strong> — 거래 탭에서 정리해주세요</span></div>`:''}
+cards.savings_goals=(()=>{const activeGoals=(S.goals||[]).filter(g=>g.status==='active').sort((a,b)=>{const o={'P0':0,'P1':1,'P2':2};return(o[a.priority]||9)-(o[b.priority]||9);}).slice(0,3);
+if(!activeGoals.length)return'';
+return`<div class="mo-section-h"><h3>저축 목표</h3>${isEditing?'':`<button class="be" data-mov="goals">전체 보기</button>`}</div>
+<div style="position:relative;margin-bottom:14px">
+${rCardEditTools('money','savings_goals')}
+${activeGoals.map(g=>renderGoalCard(g)).join('')}
+</div>`;})();
 
-${(()=>{const activeGoals=(S.goals||[]).filter(g=>g.status==='active').sort((a,b)=>{const o={'P0':0,'P1':1,'P2':2};return(o[a.priority]||9)-(o[b.priority]||9);}).slice(0,3);if(!activeGoals.length)return'';return`<div class="mo-section-h"><h3>저축 목표</h3><button class="be" data-mov="goals">전체 보기</button></div>${activeGoals.map(g=>renderGoalCard(g)).join('')}`;})()}
+cards.recent_txs=`<div class="mo-section-h"><h3>최근 거래</h3>${recent.length&&!isEditing?`<button class="be" data-mov="txs">전체 보기</button>`:''}</div>
+<div style="position:relative">
+${rCardEditTools('money','recent_txs')}
+${recent.length?recent.map(t=>renderTxRow(t)).join(''):'<div class="tx-empty">거래 내역이 없어요. + 버튼으로 추가하세요</div>'}
+</div>`;
 
-<div class="mo-section-h"><h3>최근 거래</h3>${recent.length?`<button class="be" data-mov="txs">전체 보기</button>`:''}</div>
-${recent.length?recent.map(t=>renderTxRow(t)).join(''):'<div class="tx-empty">거래 내역이 없어요. + 버튼으로 추가하세요</div>'}`;}
+// 카드 순서대로 출력
+const order=cardOrder('money');
+const cardsHtml=order.map(id=>{
+const html=cards[id]||'';
+if(!html)return'';
+const hidden=!isCardVisible('money',id);
+if(hidden&&!isEditing)return'';
+if(hidden&&isEditing){
+return`<div class="home-card" style="opacity:0.5;background:#F9FAFB" data-cardid="${id}" data-cardscope="money" draggable="true">
+${rCardEditTools('money',id,true)}
+<div style="font-size:13px;color:var(--sub);text-align:center;padding:8px">${getCardLabel('money',id)} (숨김)</div>
+</div>`;}
+if(isEditing){
+return`<div data-cardid="${id}" data-cardscope="money" draggable="true">${html}</div>`;}
+return html;}).join('');
+
+// 미분류 거래 알림 (편집 모드에서도 표시)
+const uncatNotice=uncat.length&&!isEditing?`<div style="background:#FFF8E1;border:1px solid #F5C242;border-radius:10px;padding:10px 14px;margin:14px 0;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px"><span style="color:#CB912F;display:inline-flex">${ic('warn',14)}</span><span><strong>미분류 거래 ${uncat.length}건</strong> — 거래 탭에서 정리해주세요</span></div>`:'';
+
+return cardsHtml+uncatNotice;})();}
 
 function rMoAccounts(){
 if(!S.accounts.length){return`<div class="tx-empty" style="padding:40px 24px">계좌가 아직 없어요.<br>+ 버튼으로 첫 계좌를 추가해보세요</div>`;}
@@ -2003,6 +2379,35 @@ return`<div class="mo-month-nav">
 <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center"><input id="txSearchIn" placeholder="제목/메모/카테고리 검색" value="${e(S.txSearch||'')}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">${S.txSearch?`<button id="txSearchClear" style="padding:8px 12px;color:var(--sub);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:11px">초기화</button>`:''}</div>
 ${catSummary}
 ${catChips}
+${(()=>{
+// 카테고리 필터 활성 시 → 그 카테고리의 6개월 추이 막대
+if(!catFilter)return'';
+const today=new Date();
+const months=[];
+for(let i=5;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);
+const ymKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+const monthTxsAll=txsInMonth(ymKey);
+const catTxs=monthTxsAll.filter(t=>(t.category||'기타')===catFilter&&(t.type==='expense'||t.type==='invest'));
+const sum=catTxs.reduce((s,t)=>s+t.amount,0);
+months.push({label:String(d.getMonth()+1)+'월',value:sum,date:ymKey});}
+const hasData=months.some(m=>m.value>0);
+if(!hasData)return'';
+const total=months.reduce((s,m)=>s+m.value,0);
+const avg=total/6;
+const thisMonth=months[months.length-1].value;
+const prevMo=months[months.length-2].value;
+const change=prevMo>0?Math.round((thisMonth-prevMo)/prevMo*100):null;
+return`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 12px 6px;margin-bottom:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:8px">
+<span style="font-size:13px;font-weight:600;color:var(--text)">"${e(catFilter)}" 6개월 추이</span>
+${change!=null?`<span style="font-weight:600;font-size:11px;color:${change>=0?'#E03E3E':'#0F7B6C'}">전월 대비 ${change>=0?'+':''}${change}%</span>`:''}
+</div>
+${svgDailyBars(months.map((m,i)=>({label:m.label,value:m.value,isToday:i===months.length-1})),100,'#E03E3E',avg)}
+<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+<span>월평균 <span style="color:var(--text);font-weight:600">${fmtKRW(Math.round(avg))}</span></span>
+<span>이번 달 <span style="color:${thisMonth>avg*1.3?'#E03E3E':'var(--text)'};font-weight:600">${fmtKRW(thisMonth)}</span></span>
+</div>
+</div>`;})()}
 ${monthTxs.length?txHtml:`<div class="tx-empty" style="padding:40px 24px">${S.txSearch?`"${S.txSearch}" 검색 결과가 없어요`:catFilter?`"${catFilter}" 카테고리의 거래가 없어요.`:'이 달의 거래가 없어요.<br>+ 버튼으로 추가하세요'}</div>`}`;}
 
 function renderTxRow(t){
@@ -2542,8 +2947,8 @@ return`<div class="stc"><h3 style="display:flex;align-items:center;gap:6px">${ic
 function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
-// 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더/검색)
-S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
+// 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더/검색/카드편집)
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;S.cardEditMode=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 S.infoSearch='';S.infoTagFilter='';S.prjSearch='';S.txSearch='';
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
@@ -2552,6 +2957,42 @@ if(S.tab==='calendar'){S.calView='day';S.cs=fD(new Date());}
 // navStack 비움 + 가드 이력만 유지 (replace로 교체)
 window.navStack&&(window.navStack.length=0);
 R();});
+// 홈 대시보드 — 편집 모드 토글
+const homeEditBtn=document.getElementById('homeEditBtn');if(homeEditBtn)homeEditBtn.onclick=()=>{S.cardEditMode=S.cardEditMode==='home'?null:'home';R();};
+// 카드 숨김 토글
+document.querySelectorAll('[data-cardhide]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.cardhide;const scope=b.dataset.cardscope;toggleCardHidden(scope,id);R();});
+// 카드 드래그 (PC + 터치)
+(function(){
+const wraps=document.querySelectorAll('[data-cardid][data-cardscope]');
+let dragId=null,dragScope=null;
+wraps.forEach(el=>{
+const cardId=el.dataset.cardid;const scope=el.dataset.cardscope;
+// PC 드래그
+el.addEventListener('dragstart',ev=>{dragId=cardId;dragScope=scope;el.classList.add('dragging');ev.dataTransfer.effectAllowed='move';});
+el.addEventListener('dragend',()=>{el.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));});
+el.addEventListener('dragover',ev=>{if(dragScope!==scope)return;ev.preventDefault();ev.dataTransfer.dropEffect='move';document.querySelectorAll(`[data-cardscope="${scope}"].drag-over`).forEach(x=>x.classList.remove('drag-over'));if(cardId!==dragId)el.classList.add('drag-over');});
+el.addEventListener('dragleave',()=>{el.classList.remove('drag-over');});
+el.addEventListener('drop',ev=>{ev.preventDefault();el.classList.remove('drag-over');if(!dragId||dragId===cardId||dragScope!==scope)return;
+const order=cardOrder(scope);
+const fi=order.indexOf(dragId),ti=order.indexOf(cardId);
+if(fi>=0&&ti>=0){moveCard(scope,fi,ti);R();}
+dragId=null;dragScope=null;});
+// 터치 드래그 — 드래그 핸들에서 시작
+const handle=el.querySelector('[data-carddrag]');if(!handle)return;
+let touchY=0,clone=null,curOver=null;
+handle.addEventListener('touchstart',ev=>{ev.preventDefault();dragId=cardId;dragScope=scope;touchY=ev.touches[0].clientY;
+clone=el.cloneNode(true);clone.style.cssText='position:fixed;left:16px;right:16px;top:'+el.getBoundingClientRect().top+'px;z-index:90;opacity:.8;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.15);';
+document.body.appendChild(clone);el.classList.add('dragging');},{passive:false});
+handle.addEventListener('touchmove',ev=>{ev.preventDefault();if(!clone)return;const ty=ev.touches[0].clientY;clone.style.top=(el.getBoundingClientRect().top+(ty-touchY))+'px';
+document.querySelectorAll(`[data-cardscope="${scope}"].drag-over`).forEach(x=>x.classList.remove('drag-over'));
+const target=document.elementFromPoint(ev.touches[0].clientX,ty);if(target){const row=target.closest('[data-cardid]');if(row&&row.dataset.cardid!==dragId&&row.dataset.cardscope===scope){row.classList.add('drag-over');curOver=row.dataset.cardid;}else curOver=null;}
+},{passive:false});
+handle.addEventListener('touchend',()=>{if(clone){clone.remove();clone=null;}el.classList.remove('dragging');document.querySelectorAll(`[data-cardscope="${scope}"].drag-over`).forEach(x=>x.classList.remove('drag-over'));
+if(curOver&&dragId&&curOver!==dragId){const order=cardOrder(scope);
+const fi=order.indexOf(dragId),ti=order.indexOf(curOver);
+if(fi>=0&&ti>=0){moveCard(scope,fi,ti);R();}}
+dragId=null;dragScope=null;curOver=null;});
+});})();
 // 홈 대시보드 카드 → 탭 점프
 document.querySelectorAll('[data-hometab]').forEach(b=>b.onclick=()=>{
 let tab=b.dataset.hometab;
@@ -2598,7 +3039,9 @@ document.querySelectorAll('[data-dlc]').forEach(b=>b.onclick=()=>{const[date,n]=
 document.querySelectorAll('[data-dlr]').forEach(ta=>{ta.onchange=()=>{const date=ta.dataset.dlr;setDaily(date,{reflection:ta.value});};});
 
 // ── 자산관리 이벤트 ──
-document.querySelectorAll('[data-mov]').forEach(b=>b.onclick=()=>{S.moView=b.dataset.mov;S.moAccountId=null;S.txCatFilter=null;R();});
+document.querySelectorAll('[data-mov]').forEach(b=>b.onclick=()=>{S.moView=b.dataset.mov;S.moAccountId=null;S.txCatFilter=null;S.cardEditMode=null;R();});
+// 자산 홈 편집 모드 토글
+const moEditBtn=document.getElementById('moEditBtn');if(moEditBtn)moEditBtn.onclick=()=>{S.cardEditMode=S.cardEditMode==='money'?null:'money';R();};
 document.querySelectorAll('[data-momn]').forEach(b=>b.onclick=()=>{const ym=curMonth();const[y,m]=ym.split('-').map(Number);const d=new Date(y,m-1+parseInt(b.dataset.momn),1);S.moMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');R();});
 document.querySelectorAll('[data-txcatf]').forEach(b=>b.onclick=()=>{S.txCatFilter=b.dataset.txcatf||null;R();});
 // 거래 검색
@@ -2824,7 +3267,11 @@ const infoSearchIn=document.getElementById('infoSearchIn');if(infoSearchIn){info
 let searchTimer=null;infoSearchIn.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{R();setTimeout(()=>{const el=document.getElementById('infoSearchIn');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},20);},350);});}
 const infoSearchClear=document.getElementById('infoSearchClear');if(infoSearchClear)infoSearchClear.onclick=()=>{S.infoSearch='';S.infoTagFilter='';R();};
 document.querySelectorAll('[data-itagf]').forEach(b=>b.onclick=()=>{const t=b.dataset.itagf;S.infoTagFilter=S.infoTagFilter===t?'':t;R();});
-document.querySelectorAll('[data-cf]').forEach(b=>{const handle=()=>{const v=b.dataset.cf;const newVal=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);if(newVal===null){S.aCat=null;}else{const wasNull=S.aCat===null;S.aCat=newVal;if(wasNull)navPush(()=>{S.aCat=null;});}R();};b.onclick=handle;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});});
+const catEditBtn=document.getElementById('catEditBtn');if(catEditBtn)catEditBtn.onclick=()=>{S.cardEditMode=S.cardEditMode==='archive'?null:'archive';R();};
+document.querySelectorAll('[data-cf]').forEach(b=>{
+// 편집 모드일 때는 클릭 비활성 (드래그만)
+if(S.cardEditMode==='archive')return;
+const handle=()=>{const v=b.dataset.cf;const newVal=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);if(newVal===null){S.aCat=null;}else{const wasNull=S.aCat===null;S.aCat=newVal;if(wasNull)navPush(()=>{S.aCat=null;});}R();};b.onclick=handle;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});});
 document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dc;const cat=catById(id);if(!cat)return;
 // 하위 폴더도 함께 삭제
 const allIds=catDescendants(id);
@@ -2941,8 +3388,11 @@ isDragging=false;dragId=null;curOver=null;});
 document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{S.cs=S.cs===b.dataset.cd?null:b.dataset.cd;R();});
 
 // ── 프로젝트 이벤트 ──
+const prjEditBtn=document.getElementById('prjEditBtn');if(prjEditBtn)prjEditBtn.onclick=()=>{S.cardEditMode=S.cardEditMode==='projects'?null:'projects';R();};
 document.querySelectorAll('[data-prjcf]').forEach(b=>{
 const id=b.dataset.prjcf;
+// 편집 모드일 때는 클릭/길게누르기 비활성 (드래그만)
+if(S.cardEditMode==='projects')return;
 const enter=()=>{S.prjFolder=id;S.prjFilter='active';navPush(()=>{S.prjFolder=null;});R();};
 let pressTimer=null;
 let longFired=false;
@@ -2967,6 +3417,36 @@ b.addEventListener('click',(ev)=>{if(longFired){ev.preventDefault();ev.stopPropa
 // 우클릭 (PC에서 액션 시트 열기)
 b.addEventListener('contextmenu',(ev)=>{ev.preventDefault();S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;});R();});
 });
+// 프로젝트 카테고리 드래그 (편집 모드일 때만 활성, data-pcatdrag 사용)
+(function(){
+const els=document.querySelectorAll('[data-pcatdrag]');
+let dragId=null;
+els.forEach(el=>{
+const id=el.dataset.pcatdrag;
+el.addEventListener('dragstart',ev=>{dragId=id;el.classList.add('dragging');ev.dataTransfer.effectAllowed='move';});
+el.addEventListener('dragend',()=>{el.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));});
+el.addEventListener('dragover',ev=>{ev.preventDefault();ev.dataTransfer.dropEffect='move';document.querySelectorAll('[data-pcatdrag].drag-over').forEach(x=>x.classList.remove('drag-over'));if(id!==dragId)el.classList.add('drag-over');});
+el.addEventListener('dragleave',()=>{el.classList.remove('drag-over');});
+el.addEventListener('drop',ev=>{ev.preventDefault();el.classList.remove('drag-over');if(!dragId||dragId===id)return;
+const fi=S.pcats.findIndex(c=>c.id===dragId);const ti=S.pcats.findIndex(c=>c.id===id);
+if(fi>=0&&ti>=0){const arr=[...S.pcats];const[item]=arr.splice(fi,1);arr.splice(ti,0,item);S.pcats=arr;ps();R();}
+dragId=null;});
+// 터치 드래그
+let touchY=0,clone=null,curOver=null;
+el.addEventListener('touchstart',ev=>{if(S.cardEditMode!=='projects')return;dragId=id;touchY=ev.touches[0].clientY;
+const r=el.getBoundingClientRect();
+clone=el.cloneNode(true);clone.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;z-index:90;opacity:.8;pointer-events:none;`;
+document.body.appendChild(clone);el.classList.add('dragging');},{passive:true});
+el.addEventListener('touchmove',ev=>{if(!clone)return;ev.preventDefault();const ty=ev.touches[0].clientY;const r=el.getBoundingClientRect();
+clone.style.top=(r.top+(ty-touchY))+'px';
+document.querySelectorAll('[data-pcatdrag].drag-over').forEach(x=>x.classList.remove('drag-over'));
+const target=document.elementFromPoint(ev.touches[0].clientX,ty);if(target){const row=target.closest('[data-pcatdrag]');if(row&&row.dataset.pcatdrag!==dragId){row.classList.add('drag-over');curOver=row.dataset.pcatdrag;}else curOver=null;}
+},{passive:false});
+el.addEventListener('touchend',()=>{if(clone){clone.remove();clone=null;}el.classList.remove('dragging');document.querySelectorAll('[data-pcatdrag].drag-over').forEach(x=>x.classList.remove('drag-over'));
+if(curOver&&dragId&&curOver!==dragId){const fi=S.pcats.findIndex(c=>c.id===dragId);const ti=S.pcats.findIndex(c=>c.id===curOver);
+if(fi>=0&&ti>=0){const arr=[...S.pcats];const[item]=arr.splice(fi,1);arr.splice(ti,0,item);S.pcats=arr;ps();R();}}
+dragId=null;curOver=null;});
+});})();
 const prjFolderBack=document.getElementById('prjFolderBack');if(prjFolderBack)prjFolderBack.onclick=()=>{history.back();};
 document.querySelectorAll('[data-prjf]').forEach(b=>b.onclick=()=>{S.prjFilter=b.dataset.prjf;R();});
 document.querySelectorAll('[data-prjopen]').forEach(b=>b.onclick=()=>{S.prjOpen=b.dataset.prjopen;navPush(()=>{S.prjOpen=null;});R();});
@@ -3022,7 +3502,7 @@ const prjCn=document.getElementById('prjCn');if(prjCn)prjCn.onclick=()=>{history
 // 프로젝트 안 할 일
 const prjTii=document.getElementById('prjTii');if(prjTii){prjTii.oninput=()=>{S.prjTaskIn=prjTii.value;};prjTii.onkeydown=(ev)=>{if(ev.key==='Enter')aPrjT();};}
 const prjAb=document.getElementById('prjAb');if(prjAb)prjAb.onclick=aPrjT;
-document.querySelectorAll('[data-prjtg]').forEach(b=>b.onclick=()=>{const tid=b.dataset.prjtg;S.projects=S.projects.map(p=>p.id===S.prjOpen?{...p,tasks:(p.tasks||[]).map(t=>t.id===tid?{...t,done:!t.done}:t)}:p);ps();R();});
+document.querySelectorAll('[data-prjtg]').forEach(b=>b.onclick=()=>{const tid=b.dataset.prjtg;S.projects=S.projects.map(p=>p.id===S.prjOpen?{...p,tasks:(p.tasks||[]).map(t=>t.id===tid?{...t,done:!t.done,doneAt:!t.done?fD(new Date()):''}:t)}:p);ps();R();});
 document.querySelectorAll('[data-prjtd]').forEach(b=>b.onclick=()=>{const tid=b.dataset.prjtd;S.projects=S.projects.map(p=>p.id===S.prjOpen?{...p,tasks:(p.tasks||[]).filter(t=>t.id!==tid)}:p);ps();R();});
 document.querySelectorAll('[data-prjte]').forEach(b=>b.onclick=()=>{const tid=b.dataset.prjte;const p=S.projects.find(x=>x.id===S.prjOpen);if(!p)return;const t=(p.tasks||[]).find(t=>t.id===tid);if(!t)return;const nv=prompt('할 일 수정',t.text);if(nv!==null&&nv.trim()){S.projects=S.projects.map(x=>x.id===S.prjOpen?{...x,tasks:x.tasks.map(t2=>t2.id===tid?{...t2,text:nv.trim()}:t2)}:x);ps();R();}});
 
@@ -3082,9 +3562,9 @@ if(confirm(`"${c.name}" 폴더를 삭제할까요?`)){S.pcats=S.pcats.filter(x=>
 });
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
 const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
-const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:7,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,subs:S.subs,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
+const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:8,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,subs:S.subs,cardLayout:S.cardLayout,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
 const bkImpLabel=document.getElementById('bkImpLabel');if(bkImpLabel)bkImpLabel.onclick=()=>{document.getElementById('bkImp').click();};
-const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.subs)S.subs=migrateSubs(data.subs);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
+const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.subs)S.subs=migrateSubs(data.subs);if(data.cardLayout)S.cardLayout=migrateCardLayout(data.cardLayout);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
 // 렌더링 전에 현재 모달 폼 값 저장
