@@ -1156,6 +1156,7 @@ spcat:false,         // 프로젝트 카테고리 추가 모드
 npci:'',             // 새 프로젝트 카테고리 이름
 newPCatColor:null,
 editPCatColor:null,  // 색상 편집 중인 프로젝트 카테고리 id
+editJobColor:null,   // 색상 편집 중인 입사지원 상태
 // ── 마일스톤
 sms:false,           // 마일스톤 추가/수정 모달
 emsId:null,          // 수정 중인 마일스톤 id
@@ -1221,7 +1222,12 @@ function fD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
 function pD(s){if(!s)return null;const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
 function sD(a,b){return a&&b&&fD(a)===fD(b);}
 function e(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-const SC={'준비중':'#9B9A97','지원완료':'#337EA9','서류합격':'#0F7B6C','면접예정':'#9065B0','최종합격':'#D9730D','불합격':'#E03E3E'};
+const SC_DEFAULT={'준비중':'#9B9A97','지원완료':'#337EA9','서류합격':'#0F7B6C','면접예정':'#9065B0','최종합격':'#D9730D','불합격':'#E03E3E'};
+// 사용자 정의 입사지원 색상 (localStorage에 저장)
+function jobStatusColor(status){const custom=ld('bw-jsc',{});return custom[status]||SC_DEFAULT[status]||'#787774';}
+function setJobStatusColor(status,color){const custom=ld('bw-jsc',{});custom[status]=color;sv('bw-jsc',custom);}
+// SC 객체는 호환성 유지용 Proxy (기존 코드에서 SC[status] 호출 가능)
+const SC=new Proxy({},{get:(_,k)=>jobStatusColor(k)});
 const TC=['#D4EDDA','#D5E0D0','#C8DDE8','#DDD5E8','#E8DDD5'];
 const EC={deadline:'#0F7B6C',exam:'#D9730D',interview:'#CB912F',result:'#9065B0'};
 function fI(n){const x=(n||'').split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','webp','bmp','svg'].includes(x))return ic('file_image',18);if(x==='pdf')return ic('file_text',18);if(['doc','docx','hwp'].includes(x))return ic('file_text',18);if(['xls','xlsx'].includes(x))return ic('file_chart',18);return ic('file',18);}
@@ -1680,7 +1686,8 @@ folders+='</div>';
 
 return`<div class="sh"><h2>입사지원 현황</h2><button class="bp" id="ajb" style="padding:8px 14px">+ 추가</button></div>
 <div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.jobs.length}건</div>
-${folders}`;}
+${folders}
+${S.editJobColor?rJobColorActionM():''}`;}
 
 // 취업 폴더 안에서 사용하는 입사지원 영역 (헤더 컴팩트, 입사지원 폴더가 열려있으면 카드 목록도)
 function rJobSection(){const stsOrder=['최종합격','면접예정','서류합격','지원완료','준비중','불합격'];
@@ -1737,6 +1744,7 @@ return`<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--b
 <div style="font-size:12px;color:var(--sub);margin-bottom:8px">총 ${S.jobs.length}건</div>
 ${statsCard}
 ${folders}
+${S.editJobColor?rJobColorActionM():''}
 </div>`;}
 
 function rJCard(j){return`<div class="jc" style="border-left-color:${SC[j.status]}" data-jdrag="${j.id}" draggable="true"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;align-items:center;gap:8px"><div class="dh" data-jdh="${j.id}">${ic('drag',14)}</div><div><div style="font-size:15px;font-weight:600">${e(j.company)}</div>${j.position?`<div style="font-size:12px;color:var(--sub);margin-top:2px">${e(j.position)}</div>`:''}</div></div><span class="stb" style="background:${SC[j.status]}18;color:${SC[j.status]}">${j.status}</span></div><div class="jd">${j.deadline?`<span>마감 ${j.deadline}</span>`:''}${j.applyDate?`<span>지원 ${j.applyDate}</span>`:''}${j.examDate?`<span>시험 ${j.examDate}</span>`:''}${j.resultDate?`<span>발표 ${j.resultDate}</span>`:''}${j.interviewDate?`<span>면접 ${j.interviewDate}</span>`:''}</div>${j.notes?`<div class="jn">${e(j.notes)}</div>`:''}${rCFs(j.id)}<div class="ja"><button class="be" data-ej="${j.id}">수정</button><button class="bd" data-dj="${j.id}">삭제</button></div></div>`;}
@@ -1939,6 +1947,18 @@ return`<div class="mo" id="pcatActionMo"><div class="mb" style="max-width:340px"
 <button data-pcact="delete" style="padding:12px;border:1px solid var(--danger);border-radius:10px;font-size:13px;text-align:left;display:flex;align-items:center;gap:8px;background:#fff;color:var(--danger)">${ic('trash',14)} 삭제</button>
 </div>
 <div class="fb" style="margin-top:14px"><button class="cn" id="pcatActionCn" style="flex:1">닫기</button></div>
+</div></div>`;}
+
+// 입사지원 상태별 색상 변경 액션 시트
+function rJobColorActionM(){const status=S.editJobColor;if(!status)return'';const curColor=jobStatusColor(status);
+return`<div class="mo" id="jobColorActionMo"><div class="mb" style="max-width:340px">
+<h3 style="display:flex;align-items:center;gap:8px">${folderIcon(20,curColor)} ${e(status)}</h3>
+<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff;margin-top:14px">
+<div style="font-size:13px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">${ic('palette',14)} 색상 변경</div>
+<div class="color-palette">${FCOLORS.map(cl=>`<div class="color-dot ${curColor===cl?'sel':''}" style="background:${cl}" data-jcolor="${cl}"></div>`).join('')}</div>
+<button data-jcolor="__reset__" style="margin-top:10px;padding:8px;width:100%;border:1px solid var(--border);border-radius:8px;font-size:12px;background:#fff;color:var(--sub)">기본 색상으로 되돌리기</button>
+</div>
+<div class="fb" style="margin-top:14px"><button class="cn" id="jobColorActionCn" style="flex:1">닫기</button></div>
 </div></div>`;}
 
 // 프로젝트 카드 한 개 렌더 (목록과 폴더 안에서 공통)
@@ -3059,7 +3079,7 @@ function bEv(){
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 S.tab=b.dataset.tab;sessionStorage.setItem('bw-tab',S.tab);
 // 탭 전환 시 모든 깊은 상태 리셋 (모달/상세/폴더/검색/카드편집)
-S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;S.cardEditMode=null;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.editJobColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;S.cardEditMode=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 S.infoSearch='';S.infoTagFilter='';S.prjSearch='';S.txSearch='';
 if(S.tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
@@ -3112,7 +3132,7 @@ let tab=b.dataset.hometab;
 // todo 탭 폐지 — 캘린더 일간 뷰로
 if(tab==='todo'){tab='calendar';S.calView='day';S.cs=fD(new Date());}
 S.tab=tab;sessionStorage.setItem('bw-tab',tab);
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.editJobColor=null;S.spcat=false;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 if(tab==='money'){S.moView='home';S.moAccountId=null;S.moGoalId=null;}
 window.navStack&&(window.navStack.length=0);
@@ -3120,7 +3140,7 @@ R();});
 // 홈 카드 → 자산 탭의 GOAL 서브탭으로 이동
 document.querySelectorAll('[data-homeact="goals"]').forEach(b=>b.onclick=()=>{
 S.tab='money';sessionStorage.setItem('bw-tab','money');
-S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;
+S.prev=null;S.todoEditId=null;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.editJobColor=null;S.spcat=false;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;
 S.moView='goals';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
@@ -3128,7 +3148,7 @@ R();});
 const lo=document.getElementById('lo');if(lo)lo.onclick=()=>{
 S.locked=true;S.pin='';sessionStorage.removeItem('bw-auth');
 // 깊은 상태 모두 리셋
-S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
+S.prev=null;S.todoEditId=null;S.todoIsNew=false;S.sjf=false;S.sif=false;S.sprj=false;S.sms=false;S.msAssignTaskId=null;S.sretro=false;S.sac2=false;S.stx=false;S.sgl=false;S.spri=false;S.priCtx=null;S.sev=false;S.eevId=null;S.editPCatColor=null;S.editJobColor=null;S.spcat=false;S.newFolderKind=null;S.ssub=false;S.esubId=null;
 S.prjOpen=null;S.aCat=null;S.jobFilter=null;S.prjFolder=null;S.moView='home';S.moAccountId=null;S.moGoalId=null;
 window.navStack&&(window.navStack.length=0);
 R();};
@@ -3365,7 +3385,32 @@ document.querySelectorAll('[data-wladd]').forEach(inp=>{inp.onkeydown=(ev)=>{if(
 document.querySelectorAll('[data-wltg]').forEach(b=>b.onclick=()=>{const i=parseInt(b.dataset.wltg);const d2=pD(S.selDate);const st=new Date(d2);st.setDate(d2.getDate()-(d2.getDay()===0?6:(d2.getDay()-1)));const k='bw-wl-'+fD(st);const items=ld(k,[]);if(items[i])items[i].done=!items[i].done;sv(k,items);R();});
 document.querySelectorAll('[data-wldel]').forEach(b=>b.onclick=()=>{const i=parseInt(b.dataset.wldel);const d2=pD(S.selDate);const st=new Date(d2);st.setDate(d2.getDate()-(d2.getDay()===0?6:(d2.getDay()-1)));const k='bw-wl-'+fD(st);const items=ld(k,[]);items.splice(i,1);sv(k,items);R();});
 const ajb=document.getElementById('ajb');if(ajb)ajb.onclick=()=>{S.jf={company:'',position:'',deadline:'',applyDate:'',examDate:'',resultDate:'',interviewDate:'',status:'준비중',notes:''};S.ejid=null;S.pf=[];S.sjf=true;navPush(()=>{S.sjf=false;S.pf=[];});R();};
-document.querySelectorAll('[data-jf]').forEach(b=>{const handle=()=>{const v=b.dataset.jf;if(v==='__all__'){S.jobFilter=null;}else{const wasNull=S.jobFilter===null;S.jobFilter=v;if(wasNull)navPush(()=>{S.jobFilter=null;});}R();};b.onclick=handle;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});});
+document.querySelectorAll('[data-jf]').forEach(b=>{
+const handle=()=>{const v=b.dataset.jf;if(v==='__all__'){S.jobFilter=null;}else{const wasNull=S.jobFilter===null;S.jobFilter=v;if(wasNull)navPush(()=>{S.jobFilter=null;});}R();};
+// __all__ 백 버튼은 길게 누르기 비활성 (그냥 클릭만)
+const v=b.dataset.jf;
+if(v==='__all__'){
+b.onclick=handle;
+b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});
+return;}
+// 일반 폴더: 스크롤/탭/길게누르기 구분
+let touchStartX=0,touchStartY=0,touchMoved=false;
+let pressTimer=null;let longFired=false;
+const startPress=()=>{longFired=false;pressTimer=setTimeout(()=>{longFired=true;
+S.editJobColor=v;navPush(()=>{S.editJobColor=null;});R();
+if(navigator.vibrate)navigator.vibrate(30);
+},500);};
+const cancelPress=()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}};
+b.addEventListener('mousedown',startPress);
+b.addEventListener('mouseup',cancelPress);
+b.addEventListener('mouseleave',cancelPress);
+b.addEventListener('touchstart',(ev)=>{const t=ev.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchMoved=false;startPress();},{passive:true});
+b.addEventListener('touchmove',(ev)=>{const t=ev.touches[0];const dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;if(Math.sqrt(dx*dx+dy*dy)>10){touchMoved=true;cancelPress();}},{passive:true});
+b.addEventListener('touchcancel',()=>{cancelPress();touchMoved=true;},{passive:true});
+b.addEventListener('touchend',(ev)=>{cancelPress();if(longFired){if(ev.cancelable)ev.preventDefault();return;}if(touchMoved)return;if(ev.cancelable)ev.preventDefault();handle();},{passive:false});
+b.onclick=(ev)=>{if(longFired||touchMoved){ev.preventDefault();return;}handle();};
+b.addEventListener('contextmenu',(ev)=>{ev.preventDefault();S.editJobColor=v;navPush(()=>{S.editJobColor=null;});R();});
+});
 document.querySelectorAll('[data-ej]').forEach(b=>b.onclick=()=>{const j=S.jobs.find(x=>x.id===b.dataset.ej);if(!j)return;S.jf={...j,examDate:j.examDate||''};S.ejid=j.id;S.pf=[];S.sjf=true;navPush(()=>{S.sjf=false;S.pf=[];});R();});
 document.querySelectorAll('[data-dj]').forEach(b=>b.onclick=()=>{S.jobs=S.jobs.filter(j=>j.id!==b.dataset.dj);delete S.files[b.dataset.dj];ps();R();});
 const jmo=document.getElementById('jmo');if(jmo)jmo.onclick=(ev)=>{if(ev.target===jmo){history.back();}};
@@ -3384,7 +3429,13 @@ const catEditBtn=document.getElementById('catEditBtn');if(catEditBtn)catEditBtn.
 document.querySelectorAll('[data-cf]').forEach(b=>{
 // 편집 모드일 때는 클릭 비활성 (드래그만)
 if(S.cardEditMode==='archive')return;
-const handle=()=>{const v=b.dataset.cf;const newVal=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);if(newVal===null){S.aCat=null;}else{const wasNull=S.aCat===null;S.aCat=newVal;if(wasNull)navPush(()=>{S.aCat=null;});}R();};b.onclick=handle;b.addEventListener('touchend',(ev)=>{if(ev.cancelable)ev.preventDefault();handle();},{passive:false});});
+const handle=()=>{const v=b.dataset.cf;const newVal=(v==='__root__'?null:v==='__uncat__'?'__uncat__':v);if(newVal===null){S.aCat=null;}else{const wasNull=S.aCat===null;S.aCat=newVal;if(wasNull)navPush(()=>{S.aCat=null;});}R();};
+let touchStartX=0,touchStartY=0,touchMoved=false;
+b.addEventListener('touchstart',(ev)=>{const t=ev.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchMoved=false;},{passive:true});
+b.addEventListener('touchmove',(ev)=>{const t=ev.touches[0];const dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;if(Math.sqrt(dx*dx+dy*dy)>10)touchMoved=true;},{passive:true});
+b.addEventListener('touchend',(ev)=>{if(touchMoved)return;if(ev.cancelable)ev.preventDefault();handle();},{passive:false});
+b.onclick=(ev)=>{if(touchMoved){ev.preventDefault();return;}handle();};
+});
 document.querySelectorAll('[data-dc]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();const id=b.dataset.dc;const cat=catById(id);if(!cat)return;
 // 하위 폴더도 함께 삭제
 const allIds=catDescendants(id);
@@ -3509,9 +3560,10 @@ if(S.cardEditMode==='projects')return;
 const enter=()=>{S.prjFolder=id;S.prjFilter='active';navPush(()=>{S.prjFolder=null;});R();};
 let pressTimer=null;
 let longFired=false;
+let touchStartX=0,touchStartY=0,touchMoved=false;
 const startPress=()=>{longFired=false;pressTimer=setTimeout(()=>{longFired=true;
 // 길게 누름 → 액션 시트
-S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;});R();
+S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;S.editJobColor=null;});R();
 // 햅틱 (지원 브라우저만)
 if(navigator.vibrate)navigator.vibrate(30);
 },500);};
@@ -3521,14 +3573,14 @@ b.addEventListener('mousedown',startPress);
 b.addEventListener('mouseup',cancelPress);
 b.addEventListener('mouseleave',cancelPress);
 // 터치
-b.addEventListener('touchstart',(ev)=>{startPress();},{passive:true});
-b.addEventListener('touchmove',cancelPress,{passive:true});
-b.addEventListener('touchcancel',cancelPress,{passive:true});
-b.addEventListener('touchend',(ev)=>{cancelPress();if(longFired){if(ev.cancelable)ev.preventDefault();return;}if(ev.cancelable)ev.preventDefault();enter();},{passive:false});
+b.addEventListener('touchstart',(ev)=>{const t=ev.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchMoved=false;startPress();},{passive:true});
+b.addEventListener('touchmove',(ev)=>{const t=ev.touches[0];const dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;if(Math.sqrt(dx*dx+dy*dy)>10){touchMoved=true;cancelPress();}},{passive:true});
+b.addEventListener('touchcancel',()=>{cancelPress();touchMoved=true;},{passive:true});
+b.addEventListener('touchend',(ev)=>{cancelPress();if(longFired){if(ev.cancelable)ev.preventDefault();return;}if(touchMoved)return;if(ev.cancelable)ev.preventDefault();enter();},{passive:false});
 // click — 길게 누름 발동 후엔 무시
-b.addEventListener('click',(ev)=>{if(longFired){ev.preventDefault();ev.stopPropagation();return;}enter();});
+b.addEventListener('click',(ev)=>{if(longFired||touchMoved){ev.preventDefault();ev.stopPropagation();return;}enter();});
 // 우클릭 (PC에서 액션 시트 열기)
-b.addEventListener('contextmenu',(ev)=>{ev.preventDefault();S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;});R();});
+b.addEventListener('contextmenu',(ev)=>{ev.preventDefault();S.editPCatColor=id;navPush(()=>{S.editPCatColor=null;S.editJobColor=null;});R();});
 });
 // 프로젝트 카테고리 드래그 (편집 모드일 때만 활성, data-pcatdrag 사용)
 (function(){
@@ -3673,11 +3725,19 @@ if(used){alert(`이 카테고리를 사용 중인 프로젝트가 ${used}개 있
 if(S.pcats.length<=1){alert('최소 1개 카테고리는 있어야 해요');return;}
 if(confirm(`"${c.name}" 폴더를 삭제할까요?`)){S.pcats=S.pcats.filter(x=>x.id!==id);ps();history.back();}}
 });
+
+// 입사지원 색상 액션 시트
+const jobColorActionMo=document.getElementById('jobColorActionMo');if(jobColorActionMo)jobColorActionMo.onclick=(ev)=>{if(ev.target===jobColorActionMo){history.back();}};
+const jobColorActionCn=document.getElementById('jobColorActionCn');if(jobColorActionCn)jobColorActionCn.onclick=()=>{history.back();};
+document.querySelectorAll('[data-jcolor]').forEach(b=>b.onclick=()=>{const cl=b.dataset.jcolor;const status=S.editJobColor;if(!status)return;
+if(cl==='__reset__'){const custom=ld('bw-jsc',{});delete custom[status];sv('bw-jsc',custom);}
+else{setJobStatusColor(status,cl);}
+history.back();});
 const pws=document.getElementById('pws');if(pws)pws.onclick=()=>{const c=document.getElementById('pwc').value,n=document.getElementById('pwn').value,f=document.getElementById('pwf').value;if(c!==gPw()){S.pwM={o:false,t:'현재 비밀번호가 틀렸어요'};R();return;}if(!n||n.length<4){S.pwM={o:false,t:'4자리 이상 입력해주세요'};R();return;}if(n!==f){S.pwM={o:false,t:'새 비밀번호가 일치하지 않아요'};R();return;}sPw(n);S.pwM={o:true,t:'비밀번호가 변경되었어요!'};R();};
 const rst=document.getElementById('rst');if(rst)rst.onclick=()=>{if(confirm('정말 모든 데이터를 삭제하시겠습니까?')){Object.values(K).forEach(k=>localStorage.removeItem(k));idbClear().then(()=>location.reload());}};
-const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:8,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,subs:S.subs,cardLayout:S.cardLayout,files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
+const bkExp=document.getElementById('bkExp');if(bkExp)bkExp.onclick=()=>{try{const data={version:8,exported:new Date().toISOString(),todos:S.todos,jobs:S.jobs,infos:S.infos,cats:S.cats,projects:S.projects,pcats:S.pcats,daily:S.daily,accounts:S.accounts,txs:S.txs,goals:S.goals,events:S.events,subs:S.subs,cardLayout:S.cardLayout,jobStatusColors:ld('bw-jsc',{}),files:S.files,pw:gPw()};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`brainy-backup-${fD(new Date())}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);S.bkMsg={o:true,t:'백업 파일이 다운로드되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'백업 실패: '+err.message};R();}};
 const bkImpLabel=document.getElementById('bkImpLabel');if(bkImpLabel)bkImpLabel.onclick=()=>{document.getElementById('bkImp').click();};
-const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.subs)S.subs=migrateSubs(data.subs);if(data.cardLayout)S.cardLayout=migrateCardLayout(data.cardLayout);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
+const bkImp=document.getElementById('bkImp');if(bkImp)bkImp.onchange=(ev)=>{const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(v)=>{try{const data=JSON.parse(v.target.result);if(!data.todos&&!data.jobs&&!data.infos){S.bkMsg={o:false,t:'올바른 백업 파일이 아니에요'};R();return;}if(!confirm('현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?'))return;if(data.todos)S.todos=migrateTodos(data.todos);if(data.jobs)S.jobs=data.jobs;if(data.infos)S.infos=data.infos;if(data.cats)S.cats=data.cats;if(data.projects)S.projects=migrateProjects(data.projects);if(data.pcats)S.pcats=migratePCats(data.pcats);if(data.daily)S.daily=data.daily;if(data.accounts)S.accounts=migrateAccounts(data.accounts);if(data.txs)S.txs=migrateTx(data.txs);if(data.goals)S.goals=migrateGoals(data.goals);if(data.events)S.events=migrateEvents(data.events);if(data.subs)S.subs=migrateSubs(data.subs);if(data.cardLayout)S.cardLayout=migrateCardLayout(data.cardLayout);if(data.jobStatusColors)sv('bw-jsc',data.jobStatusColors);if(data.files)S.files=data.files;if(data.pw)sPw(data.pw);ps();S.bkMsg={o:true,t:'데이터가 복원되었어요!'};R();}catch(err){S.bkMsg={o:false,t:'파일을 읽을 수 없어요'};R();}};reader.readAsText(file);ev.target.value='';};
 }
 document.getElementById('gfi').onchange=function(ev){const files=Array.from(ev.target.files);if(!files.length)return;let ld2=0;
 // 렌더링 전에 현재 모달 폼 값 저장
